@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+  <title>สถิติคะแนนสอบ TCAS — SAPIENS TUTOR</title>
+  <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      margin: 0; padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Thai", sans-serif;
+      background: #fafafa; color: #2a2a2a; font-size: 15px; line-height: 1.55;
+    }
+    .topbar {
+      display: flex; align-items: center; gap: 14px; padding: 12px 16px;
+      background: #fff; border-bottom: 1px solid #ececec;
+      position: sticky; top: 0; z-index: 100;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .topbar .logo { height: 44px; width: auto; max-width: 140px; object-fit: contain; flex-shrink: 0; }
+    .topbar-text { flex: 1; min-width: 0; }
+    .topbar-title { font-size: 15px; font-weight: 700; color: #921b1b; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .topbar-sub { font-size: 11px; color: #888; margin: 1px 0 0; letter-spacing: 0.5px; }
+
+    .container { max-width: 680px; margin: 0 auto; padding: 16px; padding-bottom: 40px; }
+
+    .warning {
+      background: #fff5f5; color: #7a2020; padding: 10px 14px; border-radius: 8px;
+      font-size: 12px; margin-bottom: 14px; border-left: 3px solid #cf463f;
+    }
+
+    /* Score Input */
+    .score-banner {
+      background: #fff; border: 1px solid #ececec; border-radius: 12px;
+      padding: 16px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    }
+    .section-title {
+      font-size: 14px; font-weight: 700; color: #921b1b;
+      margin: 0 0 12px; display: flex; align-items: center; gap: 8px;
+    }
+    .section-title::before {
+      content: ''; display: inline-block; width: 3px; height: 16px;
+      background: #cf463f; border-radius: 2px; flex-shrink: 0;
+    }
+    .score-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+    }
+    @media (max-width: 400px) { .score-grid { grid-template-columns: repeat(2, 1fr); } }
+    .score-field label { display: block; font-size: 11px; color: #666; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .score-field input {
+      width: 100%; padding: 7px 9px; font-size: 14px;
+      border: 1px solid #dcdcdc; border-radius: 7px;
+      background: #fff; color: #2a2a2a; font-family: inherit; outline: none;
+      -moz-appearance: textfield;
+    }
+    .score-field input::-webkit-outer-spin-button,
+    .score-field input::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .score-field input:focus { border-color: #cf463f; box-shadow: 0 0 0 2px rgba(207,70,63,0.12); }
+    .score-field input::placeholder { color: #c4c4c4; }
+    .btn-analyze {
+      width: 100%; margin-top: 12px; background: #921b1b; color: #fff; border: none;
+      padding: 11px; border-radius: 8px; font-size: 14px; font-weight: 600;
+      cursor: pointer; font-family: inherit; transition: background 0.15s;
+    }
+    .btn-analyze:hover { background: #7a1717; }
+
+    /* Tabs */
+    .tab-bar {
+      display: flex; background: #fff; border: 1px solid #ececec;
+      border-radius: 10px; overflow: hidden; margin-bottom: 14px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    }
+    .tab-btn {
+      flex: 1; padding: 11px 6px; font-size: 13px; font-weight: 600;
+      border: none; background: transparent; color: #888; cursor: pointer;
+      font-family: inherit; transition: all 0.15s;
+      border-right: 1px solid #ececec;
+    }
+    .tab-btn:last-child { border-right: none; }
+    .tab-btn.active { background: #921b1b; color: #fff; }
+
+    /* Section */
+    .section {
+      background: #fff; border: 1px solid #ececec; border-radius: 12px;
+      padding: 16px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    }
+
+    /* Year Pills */
+    .year-pills { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+    .year-pill {
+      padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;
+      border: 1px solid #dcdcdc; background: #fff; color: #888;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .year-pill.active { background: #921b1b; color: #fff; border-color: #921b1b; }
+
+    /* Stats Table */
+    .stats-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .stats-table th {
+      background: #f7f3f3; color: #921b1b; font-size: 11px; font-weight: 700;
+      padding: 7px 8px; text-align: center;
+      border-bottom: 2px solid #e8d5d5; white-space: nowrap;
+    }
+    .stats-table th:first-child { text-align: left; }
+    .stats-table td { padding: 7px 8px; text-align: center; border-bottom: 1px solid #f0f0f0; color: #333; }
+    .stats-table td:first-child { text-align: left; font-weight: 500; }
+    .stats-table tr:last-child td { border-bottom: none; }
+    .stats-table tr:hover td { background: #fdf8f8; }
+    .stats-table .highlight-row td { background: #fff5f5; }
+    .my-score-cell { font-weight: 700; color: #921b1b; }
+
+    /* Trend Chart */
+    .trend-subject { margin-bottom: 16px; }
+    .trend-subject-label { font-size: 12px; font-weight: 600; color: #555; margin-bottom: 5px; }
+    .bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+    .bar-label { width: 32px; font-size: 11px; color: #666; text-align: right; flex-shrink: 0; }
+    .bar-track { flex: 1; height: 18px; background: #f0f0f0; border-radius: 4px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+    .bar-fill.y66 { background: #e8b4b4; }
+    .bar-fill.y67 { background: #cf7070; }
+    .bar-fill.y68 { background: #a83030; }
+    .bar-fill.y69 { background: #921b1b; }
+    .bar-val { width: 36px; font-size: 11px; color: #555; flex-shrink: 0; }
+
+    /* Percentile */
+    .percentile-card {
+      background: #fff5f5; border: 1px solid #f0d0d0;
+      border-radius: 10px; padding: 12px; margin-bottom: 10px;
+    }
+    .pct-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px; }
+    .pct-label { font-size: 13px; color: #555; font-weight: 600; }
+    .pct-score { font-size: 20px; font-weight: 700; color: #921b1b; }
+    .pct-sub { font-size: 12px; color: #888; margin-bottom: 8px; }
+    .pct-bar-track {
+      width: 100%; height: 10px; background: #f0f0f0;
+      border-radius: 10px; position: relative; margin: 6px 0;
+    }
+    .pct-bar-fill {
+      height: 100%; border-radius: 10px;
+      background: linear-gradient(90deg, #e8b4b4, #921b1b);
+      transition: width 0.8s ease;
+    }
+    .pct-marker {
+      position: absolute; top: -3px; width: 16px; height: 16px;
+      background: #921b1b; border: 2px solid #fff; border-radius: 50%;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.2); transform: translateX(-50%);
+      transition: left 0.8s ease;
+    }
+    .pct-axis { display: flex; justify-content: space-between; font-size: 10px; color: #aaa; }
+    .pct-result { text-align: center; margin-top: 6px; font-size: 15px; font-weight: 700; color: #921b1b; }
+    .pct-result-sub { text-align: center; font-size: 12px; color: #888; }
+
+    .empty { text-align: center; padding: 30px; color: #aaa; font-size: 13px; }
+    .note { font-size: 11px; color: #aaa; margin: 8px 0 0; font-style: italic; }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <img src="/image/logo.png" alt="SAPIENS TUTOR" class="logo">
+  <div class="topbar-text">
+    <p class="topbar-title">สถิติคะแนนสอบ TCAS</p>
+    <p class="topbar-sub">by SAPIENS TUTOR</p>
+  </div>
+</div>
+
+<div class="container">
+  <div class="warning">
+    ⚠️ ข้อมูลสถิติ TGAT/TPAT ครอบคลุม TCAS66–69 | A-Level TCAS66–69 | แหล่งข้อมูล: mytcas.com
+  </div>
+
+  <!-- กรอกคะแนน -->
+  <div class="score-banner">
+    <div class="section-title">กรอกคะแนนตัวเองเพื่อเปรียบเทียบ</div>
+    <div class="score-grid" id="scoreGrid"></div>
+    <button class="btn-analyze" id="btnAnalyze">📊 เปรียบเทียบกับสถิติ</button>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tab-bar">
+    <button class="tab-btn active" data-tab="tgat">TGAT / TPAT</button>
+    <button class="tab-btn" data-tab="alevel">A-Level</button>
+  </div>
+
+  <!-- TGAT Panel -->
+  <div id="panel-tgat">
+    <div class="section">
+      <div class="section-title">ตารางคะแนนเฉลี่ยรายวิชา</div>
+      <div class="year-pills" id="tgatYearPills"></div>
+      <div style="overflow-x:auto;">
+        <table class="stats-table">
+          <thead><tr>
+            <th>วิชา</th><th>Mean</th><th>SD</th><th>Min</th><th>Max</th><th>ฉัน / ±Mean</th>
+          </tr></thead>
+          <tbody id="tgatTbody"></tbody>
+        </table>
+      </div>
+      <p class="note">* คอลัมน์ "ฉัน / ±Mean" แสดงเมื่อกรอกคะแนนและกด เปรียบเทียบ</p>
+    </div>
+
+    <div class="section">
+      <div class="section-title">เทรนด์คะแนนเฉลี่ย TCAS66–69</div>
+      <div id="tgatTrend"></div>
+    </div>
+
+    <div class="section" id="tgatPctSection" style="display:none;">
+      <div class="section-title">คุณอยู่ตรงไหนของผู้สอบ?</div>
+      <p style="font-size:12px;color:#888;margin:0 0 10px;">เทียบกับ TCAS<span id="tgatPctYear"></span> (ประมาณการจาก Normal Distribution)</p>
+      <div id="tgatPctContent"></div>
+    </div>
+  </div>
+
+  <!-- A-Level Panel -->
+  <div id="panel-alevel" style="display:none;">
+    <div class="section">
+      <div class="section-title">ตารางคะแนนเฉลี่ยรายวิชา</div>
+      <div class="year-pills" id="alevelYearPills"></div>
+      <div style="overflow-x:auto;">
+        <table class="stats-table">
+          <thead><tr>
+            <th>วิชา</th><th>Mean</th><th>SD</th><th>Min</th><th>Max</th><th>ฉัน / ±Mean</th>
+          </tr></thead>
+          <tbody id="alevelTbody"></tbody>
+        </table>
+      </div>
+      <p class="note">* คอลัมน์ "ฉัน / ±Mean" แสดงเมื่อกรอกคะแนนและกด เปรียบเทียบ</p>
+    </div>
+
+    <div class="section">
+      <div class="section-title">เทรนด์คะแนนเฉลี่ย TCAS66–69</div>
+      <div id="alevelTrend"></div>
+    </div>
+
+    <div class="section" id="alevelPctSection" style="display:none;">
+      <div class="section-title">คุณอยู่ตรงไหนของผู้สอบ?</div>
+      <p style="font-size:12px;color:#888;margin:0 0 10px;">เทียบกับ TCAS<span id="alevelPctYear"></span> (ประมาณการจาก Normal Distribution)</p>
+      <div id="alevelPctContent"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Subject maps ─────────────────────────────────────────
+const TGAT_SUBJ = {
+  tgat:   'TGAT รวม',
+  tgat1:  '· TGAT1 อังกฤษ',
+  tgat2:  '· TGAT2 เหตุผล',
+  tgat3:  '· TGAT3 สมรรถนะ',
+  tpat2:  'TPAT2 ศิลปกรรม',
+  tpat21: '· TPAT21 ทัศนศิลป์',
+  tpat22: '· TPAT22 ดนตรี',
+  tpat23: '· TPAT23 นาฏศิลป์',
+  tpat3:  'TPAT3 วิทย์-วิศวะ',
+  tpat4:  'TPAT4 สถาปัตย์',
+  tpat5:  'TPAT5 ครุศาสตร์',
+};
+const ALEVEL_SUBJ = {
+  math1: 'คณิต ประยุกต์ 1',
+  math2: 'คณิต ประยุกต์ 2',
+  sci:   'วิทย์ประยุกต์',
+  phy:   'ฟิสิกส์',
+  chem:  'เคมี',
+  bio:   'ชีววิทยา',
+  soc:   'สังคม',
+  thai:  'ภาษาไทย',
+  eng:   'ภาษาอังกฤษ',
+  fre:   'ฝรั่งเศส',
+  ger:   'เยอรมัน',
+  jpn:   'ญี่ปุ่น',
+  kor:   'เกาหลี',
+  chn:   'จีน',
+  bal:   'บาลี',
+  spn:   'สเปน',
+};
+
+const SCORE_INPUTS = [
+  { key:'tgat1', label:'TGAT1 อังกฤษ' },
+  { key:'tgat2', label:'TGAT2 เหตุผล' },
+  { key:'tgat3', label:'TGAT3 สมรรถนะ' },
+  { key:'tpat2', label:'TPAT2 ศิลปกรรม' },
+  { key:'tpat3', label:'TPAT3 วิทย์-วิศวะ' },
+  { key:'tpat4', label:'TPAT4 สถาปัตย์' },
+  { key:'tpat5', label:'TPAT5 ครุศาสตร์' },
+  { key:'math1', label:'คณิต 1' },
+  { key:'math2', label:'คณิต 2' },
+  { key:'sci',   label:'วิทย์ประยุกต์' },
+  { key:'phy',   label:'ฟิสิกส์' },
+  { key:'chem',  label:'เคมี' },
+  { key:'bio',   label:'ชีววิทยา' },
+  { key:'soc',   label:'สังคม' },
+  { key:'thai',  label:'ภาษาไทย' },
+  { key:'eng',   label:'ภาษาอังกฤษ' },
+  { key:'jpn',   label:'ญี่ปุ่น' },
+  { key:'kor',   label:'เกาหลี' },
+  { key:'chn',   label:'จีน' },
+];
+
+const TGAT_YEARS   = [66, 67, 68, 69];
+const ALEVEL_YEARS = [66, 67, 68, 69];
+const YEAR_CLASS   = { 66:'y66', 67:'y67', 68:'y68', 69:'y69' };
+
+let examStats = null;
+let myScores  = {};
+let analyzed  = false;
+let tgatYear  = 69;
+let alevelYear= 69;
+
+// ── Normal CDF approximation ──────────────────────────────
+function normCDF(z) {
+  const a1=0.254829592,a2=-0.284496736,a3=1.421413741,a4=-1.453152027,a5=1.061405429,p=0.3275911;
+  const sign = z < 0 ? -1 : 1;
+  const x = Math.abs(z) / Math.sqrt(2);
+  const t = 1 / (1 + p * x);
+  const y = 1 - (((((a5*t+a4)*t)+a3)*t+a2)*t+a1)*t*Math.exp(-x*x);
+  return 0.5 * (1 + sign * y);
+}
+function percentileOf(score, mean, sd) {
+  if (sd <= 0) return null;
+  return normCDF((score - mean) / sd) * 100;
+}
+
+// ── Score Grid ────────────────────────────────────────────
+function buildScoreGrid() {
+  document.getElementById('scoreGrid').innerHTML = SCORE_INPUTS.map(f => `
+    <div class="score-field">
+      <label>${f.label}</label>
+      <input type="number" id="inp_${f.key}" min="0" max="100" step="0.01" placeholder="—"
+        oninput="let v=parseFloat(this.value);if(!isNaN(v)){if(v>100)this.value=100;if(v<0)this.value=0;}">
+    </div>`).join('');
+}
+
+function collectScores() {
+  const s = {};
+  SCORE_INPUTS.forEach(f => {
+    const v = parseFloat(document.getElementById('inp_' + f.key).value);
+    if (!isNaN(v)) s[f.key] = v;
+  });
+  // derive tgat composite
+  const t1=s.tgat1, t2=s.tgat2, t3=s.tgat3;
+  if (t1!=null||t2!=null||t3!=null) {
+    s.tgat = ((t1||0)+(t2||0)+(t3||0)) / 3;
+  }
+  return s;
+}
+
+// ── Year Pills ────────────────────────────────────────────
+function buildPills(id, years, active, onChange) {
+  const el = document.getElementById(id);
+  el.innerHTML = years.map(y =>
+    `<button class="year-pill ${y===active?'active':''}" data-y="${y}">TCAS${y}</button>`
+  ).join('');
+  el.querySelectorAll('.year-pill').forEach(b => b.addEventListener('click', () => {
+    el.querySelectorAll('.year-pill').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    onChange(parseInt(b.dataset.y));
+  }));
+}
+
+// ── Table ─────────────────────────────────────────────────
+function renderTable(tbodyId, subjects, data, scores) {
+  const tbody = document.getElementById(tbodyId);
+  if (!data) { tbody.innerHTML = '<tr><td colspan="6" class="empty">ไม่มีข้อมูล</td></tr>'; return; }
+  tbody.innerHTML = Object.entries(subjects).map(([key, label]) => {
+    const s = data[key];
+    if (!s) return '';
+    const mv = scores[key];
+    const hasMe = mv != null && analyzed;
+    const diff  = hasMe ? (mv - s.mean) : null;
+    const diffStr = diff != null ? `<br><span style="font-size:10px;color:${diff>=0?'#2a7a2a':'#cf463f'}">(${diff>=0?'+':''}${diff.toFixed(2)})</span>` : '';
+    return `<tr class="${hasMe?'highlight-row':''}">
+      <td>${label}</td>
+      <td>${s.mean.toFixed(2)}</td>
+      <td>${s.sd.toFixed(2)}</td>
+      <td>${s.min.toFixed(1)}</td>
+      <td>${s.max.toFixed(1)}</td>
+      <td class="${hasMe?'my-score-cell':''}">${hasMe?mv.toFixed(1)+diffStr:'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Trend Chart ───────────────────────────────────────────
+function renderTrend(containerId, subjects, dataByYear, years) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = Object.entries(subjects).map(([key, label]) => {
+    const rows = years.map(y => {
+      const s = dataByYear[y]?.[key];
+      if (!s) return '';
+      const pct = (s.mean / 100 * 100).toFixed(1);
+      return `<div class="bar-row">
+        <div class="bar-label">${y}</div>
+        <div class="bar-track"><div class="bar-fill ${YEAR_CLASS[y]}" style="width:${pct}%"></div></div>
+        <div class="bar-val">${s.mean.toFixed(1)}</div>
+      </div>`;
+    }).join('');
+    if (!rows.trim()) return '';
+    return `<div class="trend-subject">
+      <div class="trend-subject-label">${label}</div>
+      ${rows}
+    </div>`;
+  }).join('');
+}
+
+// ── Percentile Section ────────────────────────────────────
+function renderPercentile(sectionId, contentId, yearLabelId, subjects, dataByYear, year, scores) {
+  const section = document.getElementById(sectionId);
+  const content = document.getElementById(contentId);
+  document.getElementById(yearLabelId).textContent = year;
+
+  if (!analyzed) { section.style.display='none'; return; }
+
+  const data = dataByYear[year];
+  const items = Object.entries(subjects).map(([key,label]) => {
+    const s = data?.[key];
+    const mv = scores[key];
+    if (!s || mv == null) return null;
+    const pct = percentileOf(mv, s.mean, s.sd);
+    return { label, mv, s, pct };
+  }).filter(Boolean);
+
+  if (!items.length) { section.style.display='none'; return; }
+  section.style.display = 'block';
+
+  content.innerHTML = items.map(({ label, mv, s, pct }) => {
+    const top    = (100 - pct).toFixed(1);
+    const barPct = Math.min(Math.max(pct, 0), 100).toFixed(1);
+    return `<div class="percentile-card">
+      <div class="pct-header">
+        <span class="pct-label">${label}</span>
+        <span class="pct-score">${mv.toFixed(1)}</span>
+      </div>
+      <div class="pct-sub">เฉลี่ย ${s.mean.toFixed(2)} · SD ${s.sd.toFixed(2)} · ผู้สอบ ${s.n.toLocaleString()} คน</div>
+      <div class="pct-bar-track">
+        <div class="pct-bar-fill" style="width:${barPct}%"></div>
+        <div class="pct-marker" style="left:${barPct}%"></div>
+      </div>
+      <div class="pct-axis"><span>0</span><span>50</span><span>100</span></div>
+      <div class="pct-result">Top ${top}% ของผู้สอบ</div>
+      <div class="pct-result-sub">สูงกว่า ${barPct}% ของผู้เข้าสอบ</div>
+    </div>`;
+  }).join('');
+}
+
+// ── Render All ────────────────────────────────────────────
+function renderAll() {
+  renderTable('tgatTbody',   TGAT_SUBJ,   examStats.tgat_tpat[tgatYear],  myScores);
+  renderTable('alevelTbody', ALEVEL_SUBJ, examStats.alevel[alevelYear],    myScores);
+  renderTrend('tgatTrend',   TGAT_SUBJ,   examStats.tgat_tpat, TGAT_YEARS);
+  renderTrend('alevelTrend', ALEVEL_SUBJ, examStats.alevel,    ALEVEL_YEARS);
+  renderPercentile('tgatPctSection',   'tgatPctContent',   'tgatPctYear',   TGAT_SUBJ,   examStats.tgat_tpat, tgatYear,   myScores);
+  renderPercentile('alevelPctSection', 'alevelPctContent', 'alevelPctYear', ALEVEL_SUBJ, examStats.alevel,    alevelYear, myScores);
+}
+
+// ── Tabs ──────────────────────────────────────────────────
+document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const t = btn.dataset.tab;
+  document.getElementById('panel-tgat').style.display   = t==='tgat'   ? 'block' : 'none';
+  document.getElementById('panel-alevel').style.display = t==='alevel' ? 'block' : 'none';
+}));
+
+// ── Analyze button ────────────────────────────────────────
+document.getElementById('btnAnalyze').addEventListener('click', () => {
+  myScores = collectScores();
+  analyzed = true;
+  renderAll();
+  document.getElementById('tgatPctSection').scrollIntoView({ behavior:'smooth', block:'start' });
+});
+
+// ── Init ──────────────────────────────────────────────────
+async function init() {
+  buildScoreGrid();
+  try {
+    const res = await fetch('/api/exam-stats');
+    examStats = await res.json();
+  } catch(e) {
+    document.querySelector('.container').innerHTML = '<div class="empty">โหลดข้อมูลไม่สำเร็จ</div>';
+    return;
+  }
+  buildPills('tgatYearPills',   TGAT_YEARS,   tgatYear,   y => { tgatYear=y;   renderTable('tgatTbody',TGAT_SUBJ,examStats.tgat_tpat[y],myScores); renderPercentile('tgatPctSection','tgatPctContent','tgatPctYear',TGAT_SUBJ,examStats.tgat_tpat,y,myScores); });
+  buildPills('alevelYearPills', ALEVEL_YEARS, alevelYear, y => { alevelYear=y; renderTable('alevelTbody',ALEVEL_SUBJ,examStats.alevel[y],myScores);  renderPercentile('alevelPctSection','alevelPctContent','alevelPctYear',ALEVEL_SUBJ,examStats.alevel,y,myScores); });
+  renderAll();
+}
+init();
+</script>
+</body>
+</html>

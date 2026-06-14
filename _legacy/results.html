@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>ผลการค้นหาคณะ — SAPIENS TUTOR</title>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+  :root {
+    --red: #921b1b;
+    --red-light: #cf463f;
+    --red-bg: #fff5f5;
+    --green: #0F6E56;
+    --green-bg: #E1F5EE;
+    --amber: #854F0B;
+    --amber-bg: #FAEEDA;
+    --text: #2a2a2a;
+    --muted: #888;
+    --border: #ececec;
+    --bg: #f5f5f5;
+    --card: #fff;
+    --header-h: 56px;
+    --filter-h: 48px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'Noto Sans Thai', 'Sarabun', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ── Top bar ─────────────────────────────────────────── */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--red);
+    height: var(--header-h);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+  .topbar-logo {
+    height: 30px;
+    filter: brightness(0) invert(1);
+    opacity: 0.9;
+  }
+  .topbar-title {
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+    flex: 1;
+  }
+  .topbar-count {
+    background: rgba(255,255,255,0.2);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 20px;
+  }
+
+  /* ── Summary strip ───────────────────────────────────── */
+  .summary-strip {
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 16px;
+    display: flex;
+    gap: 8px;
+    justify-content: space-around;
+  }
+  .summary-pill {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    flex: 1;
+  }
+  .summary-pill .num {
+    font-size: 22px;
+    font-weight: 800;
+    line-height: 1;
+  }
+  .summary-pill .label {
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .pill-safe .num { color: var(--green); }
+  .pill-risky .num { color: var(--amber); }
+  .pill-fail .num { color: var(--red); }
+  .summary-divider { width: 1px; background: var(--border); }
+
+  /* ── Search bar ──────────────────────────────────────── */
+  .search-wrap {
+    padding: 10px 16px 6px;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: var(--header-h);
+    z-index: 90;
+  }
+  .search-input {
+    width: 100%;
+    padding: 8px 14px 8px 36px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    background: var(--bg);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s;
+    font-family: inherit;
+  }
+  .search-input:focus { border-color: var(--red-light); }
+  .search-icon {
+    position: absolute;
+    left: 26px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    font-size: 15px;
+    pointer-events: none;
+  }
+  .search-wrap-inner { position: relative; }
+
+  /* ── Uni filter tabs ─────────────────────────────────── */
+  .uni-tabs-wrap {
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: calc(var(--header-h) + 54px);
+    z-index: 89;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .uni-tabs-wrap::-webkit-scrollbar { display: none; }
+  .uni-tabs {
+    display: flex;
+    gap: 0;
+    padding: 0 12px;
+    white-space: nowrap;
+    width: max-content;
+    min-width: 100%;
+  }
+  .uni-tab {
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2.5px solid transparent;
+    transition: all 0.15s;
+    user-select: none;
+    font-family: inherit;
+    background: none;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .uni-tab:hover { color: var(--red); }
+  .uni-tab.active {
+    color: var(--red);
+    border-bottom-color: var(--red);
+  }
+  .uni-tab .tab-count {
+    font-size: 10px;
+    background: var(--red-bg);
+    color: var(--red);
+    padding: 1px 5px;
+    border-radius: 10px;
+    margin-left: 4px;
+    font-weight: 700;
+  }
+  .uni-tab.active .tab-count {
+    background: var(--red);
+    color: #fff;
+  }
+
+  /* ── Faculty list ────────────────────────────────────── */
+  .list-wrap {
+    padding: 8px 12px 80px;
+  }
+
+  .uni-section { margin-bottom: 4px; }
+  .uni-header {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 12px 4px 6px;
+  }
+
+  .fac-card {
+    background: var(--card);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 6px;
+    border-left: 3.5px solid transparent;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    transition: transform 0.1s;
+    animation: fadeIn 0.2s ease both;
+  }
+  .fac-card:active { transform: scale(0.99); }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .fac-card.safe  { border-left-color: var(--green); }
+  .fac-card.risky { border-left-color: #f0b429; }
+
+  .fac-info { flex: 1; min-width: 0; }
+  .fac-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.3;
+    word-break: break-word;
+  }
+  .fac-uni {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .fac-scores {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 3px;
+    flex-shrink: 0;
+  }
+  .score-row {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+  .score-label { font-size: 10px; color: var(--muted); }
+  .score-val {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .diff-badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 20px;
+    margin-top: 4px;
+  }
+  .diff-badge.safe  { background: var(--green-bg);  color: var(--green); }
+  .diff-badge.risky { background: var(--amber-bg);  color: var(--amber); }
+
+  /* ── Empty / loading ─────────────────────────────────── */
+  .empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+  }
+  .empty-icon { font-size: 48px; margin-bottom: 12px; }
+  .empty-text { font-size: 14px; }
+
+  .loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh;
+    gap: 16px;
+    color: var(--muted);
+  }
+  .spinner {
+    width: 36px; height: 36px;
+    border: 3px solid var(--border);
+    border-top-color: var(--red);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Warning bar ─────────────────────────────────────── */
+  .warning-bar {
+    background: #fffbeb;
+    border-top: 1px solid #fde68a;
+    padding: 8px 16px;
+    font-size: 11px;
+    color: #92400e;
+    text-align: center;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+  }
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="topbar">
+  <img src="/image/logo.png" class="topbar-logo" alt="SAPIENS TUTOR" onerror="this.style.display='none'">
+  <span class="topbar-title">ผลการค้นหาคณะ</span>
+  <span class="topbar-count" id="topbar-count">—</span>
+</div>
+
+<!-- Summary -->
+<div class="summary-strip" id="summary-strip" style="display:none">
+  <div class="summary-pill pill-safe">
+    <span class="num" id="sum-safe">0</span>
+    <span class="label">🟢 ปลอดภัย</span>
+  </div>
+  <div class="summary-divider"></div>
+  <div class="summary-pill pill-risky">
+    <span class="num" id="sum-risky">0</span>
+    <span class="label">🟡 ก้ำกึ่ง</span>
+  </div>
+  <div class="summary-divider"></div>
+  <div class="summary-pill pill-fail">
+    <span class="num" id="sum-fail">0</span>
+    <span class="label">🔴 ไม่ผ่าน</span>
+  </div>
+</div>
+
+<!-- Search -->
+<div class="search-wrap" id="search-wrap" style="display:none">
+  <div class="search-wrap-inner">
+    <span class="search-icon">🔍</span>
+    <input class="search-input" id="search-input" type="text" placeholder="ค้นหาคณะหรือมหาวิทยาลัย..." autocomplete="off">
+  </div>
+</div>
+
+<!-- Uni tabs -->
+<div class="uni-tabs-wrap" id="uni-tabs-wrap" style="display:none">
+  <div class="uni-tabs" id="uni-tabs"></div>
+</div>
+
+<!-- List -->
+<div class="list-wrap" id="list-wrap">
+  <div class="loading">
+    <div class="spinner"></div>
+    <span>กำลังโหลดผลลัพธ์...</span>
+  </div>
+</div>
+
+<!-- Warning -->
+<div class="warning-bar">⚠️ ข้อมูลจากสถิติย้อนหลัง 3 ปี ควรตรวจสอบเกณฑ์จริงที่ mytcas.com</div>
+
+<script>
+// ── state ─────────────────────────────────────────────────────────
+let allResults = [];   // safe + risky combined
+let activeUni = 'ทั้งหมด';
+let searchText = '';
+
+// ── init ──────────────────────────────────────────────────────────
+async function init() {
+  // ดึง userId จาก URL param
+  const params = new URLSearchParams(location.search);
+  const userId = params.get('uid');
+
+  if (!userId) {
+    showError('ไม่พบข้อมูลผู้ใช้');
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/match-result?userId=${encodeURIComponent(userId)}`);
+    if (!res.ok) {
+      if (res.status === 404) {
+        showError('ผลลัพธ์หมดอายุแล้ว\nกรุณากลับไปกรอกคะแนนใหม่');
+      } else {
+        showError('โหลดข้อมูลไม่สำเร็จ');
+      }
+      return;
+    }
+
+    const data = await res.json();
+    render(data);
+  } catch (e) {
+    showError('เกิดข้อผิดพลาด: ' + e.message);
+  }
+}
+
+function render(data) {
+  const { safe = [], risky = [], failCount = 0, totalChecked = 0 } = data;
+
+  // mark status
+  safe.forEach(r => r._status = 'safe');
+  risky.forEach(r => r._status = 'risky');
+  allResults = [...safe, ...risky]; // safe ก่อน (avgMin สูงสุด → ต่ำ)
+
+  // summary
+  document.getElementById('sum-safe').textContent = safe.length;
+  document.getElementById('sum-risky').textContent = risky.length;
+  document.getElementById('sum-fail').textContent = failCount;
+  document.getElementById('topbar-count').textContent = `${allResults.length} คณะ`;
+  document.getElementById('summary-strip').style.display = '';
+  document.getElementById('search-wrap').style.display = '';
+  document.getElementById('uni-tabs-wrap').style.display = '';
+
+  buildTabs();
+  renderList();
+
+  // search listener
+  document.getElementById('search-input').addEventListener('input', e => {
+    searchText = e.target.value.toLowerCase();
+    renderList();
+  });
+}
+
+// ── build university tabs ─────────────────────────────────────────
+function buildTabs() {
+  const uniMap = {};
+  allResults.forEach(r => {
+    const u = r.uni || 'อื่นๆ';
+    uniMap[u] = (uniMap[u] || 0) + 1;
+  });
+
+  const unis = Object.keys(uniMap).sort((a, b) => a.localeCompare(b, 'th'));
+
+  const container = document.getElementById('uni-tabs');
+  container.innerHTML = '';
+
+  // "ทั้งหมด" tab
+  const allTab = makeTab('ทั้งหมด', allResults.length);
+  allTab.classList.add('active');
+  allTab.onclick = () => selectTab('ทั้งหมด', allTab);
+  container.appendChild(allTab);
+
+  unis.forEach(uni => {
+    const tab = makeTab(uni, uniMap[uni]);
+    tab.onclick = () => selectTab(uni, tab);
+    container.appendChild(tab);
+  });
+}
+
+function makeTab(label, count) {
+  const btn = document.createElement('button');
+  btn.className = 'uni-tab';
+  btn.innerHTML = `${label}<span class="tab-count">${count}</span>`;
+  return btn;
+}
+
+function selectTab(uni, el) {
+  activeUni = uni;
+  document.querySelectorAll('.uni-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  // scroll tab into view
+  el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  renderList();
+}
+
+// ── render list ───────────────────────────────────────────────────
+function renderList() {
+  let items = allResults;
+
+  // กรอง uni
+  if (activeUni !== 'ทั้งหมด') {
+    items = items.filter(r => r.uni === activeUni);
+  }
+
+  // กรอง search
+  if (searchText) {
+    items = items.filter(r =>
+      (r.name || '').toLowerCase().includes(searchText) ||
+      (r.uni  || '').toLowerCase().includes(searchText)
+    );
+  }
+
+  const wrap = document.getElementById('list-wrap');
+
+  if (items.length === 0) {
+    wrap.innerHTML = `
+      <div class="empty">
+        <div class="empty-icon">🔍</div>
+        <div class="empty-text">ไม่พบคณะที่ตรงกับเงื่อนไข</div>
+      </div>`;
+    return;
+  }
+
+  // จัดกลุ่มตาม uni (เฉพาะเมื่อดู "ทั้งหมด")
+  if (activeUni === 'ทั้งหมด' && !searchText) {
+    const groups = {};
+    items.forEach(r => {
+      const u = r.uni || 'อื่นๆ';
+      if (!groups[u]) groups[u] = [];
+      groups[u].push(r);
+    });
+    const unis = Object.keys(groups).sort((a, b) => a.localeCompare(b, 'th'));
+
+    wrap.innerHTML = unis.map(uni =>
+      `<div class="uni-section">
+        <div class="uni-header">${uni} (${groups[uni].length})</div>
+        ${groups[uni].map(cardHTML).join('')}
+      </div>`
+    ).join('');
+  } else {
+    wrap.innerHTML = items.map(cardHTML).join('');
+  }
+}
+
+function cardHTML(r) {
+  const diffText = r.diff >= 0 ? `+${r.diff.toFixed(2)}` : r.diff.toFixed(2);
+  const statusCls = r._status;
+  return `
+    <div class="fac-card ${statusCls}">
+      <div class="fac-info">
+        <div class="fac-name">${r.name}</div>
+        <div class="fac-uni">${r.uni || ''}</div>
+      </div>
+      <div class="fac-scores">
+        <div class="score-row">
+          <span class="score-label">คะแนนคุณ</span>
+          <span class="score-val">${r.total.toFixed(2)}</span>
+        </div>
+        <div class="score-row">
+          <span class="score-label">ต่ำสุดเฉลี่ย</span>
+          <span class="score-val" style="font-weight:400;color:var(--muted)">${r.avgMin.toFixed(2)}</span>
+        </div>
+        <div class="diff-badge ${statusCls}">${diffText}</div>
+      </div>
+    </div>`;
+}
+
+function showError(msg) {
+  document.getElementById('list-wrap').innerHTML = `
+    <div class="empty">
+      <div class="empty-icon">😕</div>
+      <div class="empty-text" style="white-space:pre-line">${msg}</div>
+    </div>`;
+}
+
+init();
+</script>
+</body>
+</html>

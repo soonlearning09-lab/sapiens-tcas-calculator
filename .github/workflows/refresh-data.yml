@@ -1,0 +1,35 @@
+name: Refresh TCAS data
+
+# ดึงข้อมูลล่าสุดจาก mytcas.com แล้ว commit ถ้ามีการเปลี่ยนแปลง
+on:
+  schedule:
+    - cron: '0 19 * * 0' # ทุกวันอาทิตย์ 02:00 น. เวลาไทย (19:00 UTC วันอาทิตย์)
+  workflow_dispatch: {} # กดรันเองได้จากหน้า Actions
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build dataset from mytcas
+        run: node scripts/build-data.mjs
+
+      - name: Commit if changed
+        run: |
+          if [ -n "$(git status --porcelain public/data)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add public/data
+            git commit -m "chore: refresh TCAS data $(date -u +%Y-%m-%d)"
+            git push
+          else
+            echo "ไม่มีข้อมูลเปลี่ยนแปลง"
+          fi
