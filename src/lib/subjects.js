@@ -27,10 +27,12 @@ export const SUBJECTS = {
   tgat3: { name: 'TGAT3 สมรรถนะการทำงาน', short: 'TGAT3', group: 'TGAT', max: 100, scale: 1 },
 
   // ── TPAT (max 100) ───────────────────────────
-  tpat1: { name: 'TPAT1 วิชาเฉพาะ กสพท', short: 'TPAT1', group: 'TPAT', max: 100, scale: 1 },
-  tpat11: { name: 'TPAT11 เชาวน์ปัญญา', short: 'TPAT11', group: 'พิเศษ', max: 100, scale: 1 },
-  tpat12: { name: 'TPAT12 จริยธรรมทางการแพทย์', short: 'TPAT12', group: 'พิเศษ', max: 100, scale: 1 },
-  tpat13: { name: 'TPAT13 ทักษะการเชื่อมโยง', short: 'TPAT13', group: 'พิเศษ', max: 100, scale: 1 },
+  // TPAT1 (วิชาเฉพาะ กสพท) แยกเป็น 3 พาร์ทในฟอร์ม — ตัวรวม tpat1 ไม่ขึ้นฟอร์ม
+  // แต่ derive จากค่าเฉลี่ย 3 พาร์ท (ดู deriveScores) เพื่อให้หลักสูตรที่อ้างอิง tpat1 ยังคำนวณได้
+  tpat1: { name: 'TPAT1 วิชาเฉพาะ กสพท (รวม)', short: 'TPAT1', group: 'พิเศษ', max: 100, scale: 1 },
+  tpat11: { name: 'TPAT1 พาร์ท 1 เชาวน์ปัญญา', short: 'TPAT1.1 เชาวน์ปัญญา', group: 'TPAT', max: 100, scale: 1 },
+  tpat12: { name: 'TPAT1 พาร์ท 2 จริยธรรมทางการแพทย์', short: 'TPAT1.2 จริยธรรมแพทย์', group: 'TPAT', max: 100, scale: 1 },
+  tpat13: { name: 'TPAT1 พาร์ท 3 ความคิดเชื่อมโยง', short: 'TPAT1.3 ความคิดเชื่อมโยง', group: 'TPAT', max: 100, scale: 1 },
   tpat2: { name: 'TPAT2 ความถนัดศิลปกรรมศาสตร์', short: 'TPAT2', group: 'TPAT', max: 100, scale: 1 },
   tpat21: { name: 'TPAT21 ทัศนศิลป์', short: 'TPAT21', group: 'พิเศษ', max: 100, scale: 1 },
   tpat22: { name: 'TPAT22 ดนตรี', short: 'TPAT22', group: 'พิเศษ', max: 100, scale: 1 },
@@ -98,4 +100,19 @@ export function toScale100(code, rawValue) {
   const meta = SUBJECTS[code];
   const scale = meta?.scale ?? 1;
   return (Number(rawValue) || 0) * scale;
+}
+
+// 3 พาร์ทของ TPAT1 (กสพท) ถ่วงน้ำหนักเท่ากัน → ตัวรวม tpat1 = ค่าเฉลี่ยของพาร์ทที่กรอก
+export const TPAT1_PARTS = ['tpat11', 'tpat12', 'tpat13'];
+
+// จำกัดค่าที่กรอกให้อยู่ในช่วง 0..max ของวิชานั้น (กันการกรอกเกินคะแนนเต็ม)
+// คืนค่าเป็น string เพื่อใช้กับ input โดยตรง; ปล่อยค่าระหว่างพิมพ์ (เช่น '' หรือ '9.') ไว้ตามเดิม
+export function clampScore(code, raw) {
+  if (raw === '' || raw === null || raw === undefined) return '';
+  const n = Number(raw);
+  if (Number.isNaN(n)) return raw;
+  const max = SUBJECTS[code]?.max ?? 100;
+  if (n < 0) return '0';
+  if (n > max) return String(max);
+  return raw;
 }

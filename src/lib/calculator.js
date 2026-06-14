@@ -1,5 +1,5 @@
 // ตัวคำนวณคะแนน TCAS — ใช้สัดส่วน (weights) จริงจาก mytcas เทียบกับ min_score จริง
-import { SUBJECTS, NON_SUBJECT_KEYS, toScale100 } from './subjects.js';
+import { SUBJECTS, NON_SUBJECT_KEYS, toScale100, TPAT1_PARTS } from './subjects.js';
 
 // เกณฑ์สถานะ (เทียบกับคะแนนต่ำสุดจริงของปีก่อน)
 const MARGIN_SAFE = 3;   // สูงกว่าต่ำสุด ≥ 3 → โอกาสสูง
@@ -8,6 +8,16 @@ const MIN_COVERAGE = 0.5; // ต้องกรอกวิชาที่ใช
 
 function hasValue(v) {
   return v !== undefined && v !== null && v !== '' && !Number.isNaN(Number(v));
+}
+
+// เติมค่ารวม tpat1 ที่ derive จาก 3 พาร์ท (ผู้ใช้กรอกเป็นพาร์ท แต่บางหลักสูตรอ้างอิง tpat1 รวม)
+// tpat1 = ค่าเฉลี่ยของพาร์ทที่กรอก (กสพท ถ่วงน้ำหนัก 3 พาร์ทเท่ากัน)
+export function withDerivedScores(userScores) {
+  if (!userScores || hasValue(userScores.tpat1)) return userScores;
+  const parts = TPAT1_PARTS.filter((k) => hasValue(userScores[k]));
+  if (!parts.length) return userScores;
+  const avg = parts.reduce((s, k) => s + Number(userScores[k]), 0) / parts.length;
+  return { ...userScores, tpat1: avg };
 }
 
 // แตกสัดส่วนของหลักสูตรออกมาเป็นรายการ component (รองรับกฎ cal_*)
@@ -33,7 +43,8 @@ export function programComponents(scores) {
 
 // ประเมินหลักสูตร 1 รายการกับคะแนนผู้ใช้
 // userScores: { code: rawValue }  (gpax กรอก 0-4)
-export function evaluateProgram(program, userScores) {
+export function evaluateProgram(program, rawUserScores) {
+  const userScores = withDerivedScores(rawUserScores);
   const comps = programComponents(program.scores);
   const totalWeight = comps.reduce((s, c) => s + c.weight, 0);
 

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { SUBJECTS, GROUP_ORDER } from '../lib/subjects.js';
+import { SUBJECTS, GROUP_ORDER, clampScore } from '../lib/subjects.js';
 
 const MAX_PICKS = 10;
 
@@ -27,7 +27,9 @@ function ScoreGroup({ group, items, scores, setScore, defaultOpen }) {
         <div className="score-grid">
           {items.map((it) => (
             <div className="score-field" key={it.code}>
-              <label title={it.name}>{it.short}</label>
+              <label title={it.name}>
+                {it.short} <span className="score-max">/ {it.max}</span>
+              </label>
               <input
                 type="number"
                 inputMode="decimal"
@@ -159,7 +161,7 @@ function ProgramPicker({ programs, picks, setPicks, byKey }) {
 }
 
 export default function InputPage({ programs, scores, setScores, picks, setPicks, byKey, meta, onSubmit }) {
-  const setScore = (code, val) => setScores((s) => ({ ...s, [code]: val }));
+  const setScore = (code, val) => setScores((s) => ({ ...s, [code]: clampScore(code, val) }));
   const filledCount = Object.values(scores).filter((v) => v !== undefined && v !== '').length;
   const canSubmit = filledCount > 0;
 

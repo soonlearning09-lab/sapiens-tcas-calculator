@@ -239,6 +239,10 @@ button {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.score-field .score-max {
+  color: #aaa;
+  font-weight: 400;
+}
 .score-field input {
   width: 100%;
   padding: 9px 10px;
