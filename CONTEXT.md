@@ -5,6 +5,9 @@
 
 อัปเดตล่าสุด: 2026-06-14
 
+**🔴 LIVE:** https://soonlearning09-lab.github.io/sapiens-tcas-calculator/
+(repo: `soonlearning09-lab/sapiens-tcas-calculator` · public · GitHub Pages ผ่าน Actions)
+
 ---
 
 ## 1. โปรเจคนี้คืออะไร / ประวัติ
@@ -120,6 +123,13 @@ npm run build        # → dist/  (vite base: './' deploy ได้ทั้ง 
 npm run preview      # ดู build จริง
 ```
 ขนาดไฟล์ข้อมูล: raw ~9.3MB / **gzip ~0.34MB** (host static บีบอัตโนมัติ) · JS bundle 53KB gzip
+
+**Deploy (ทำแล้ว — GitHub Pages ผ่าน Actions):**
+- repo: `soonlearning09-lab/sapiens-tcas-calculator` (public) · live: https://soonlearning09-lab.github.io/sapiens-tcas-calculator/
+- `.github/workflows/deploy.yml` → build + deploy ทุก push `main` (และ workflow_dispatch). ใช้ `actions/upload-pages-artifact` + `deploy-pages`
+- `.github/workflows/refresh-data.yml` ดึงข้อมูล mytcas ทุกอาทิตย์ → commit `public/data` → trigger deploy ใหม่อัตโนมัติ
+- ยืนยันแล้ว: index 200, `data/programs.json` เสิร์ฟ gzip ~0.4MB
+- ⚠️ GitHub บังคับ Actions เป็น Node.js 24 ตั้งแต่ 2026-06-16 — action versions ปัจจุบันยังรันได้ แต่ควรอัปเกรดในอนาคต
 
 ---
 
