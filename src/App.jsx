@@ -3,6 +3,7 @@ import { useProgramData } from './lib/useProgramData.js';
 import { loadInitialState, saveState } from './lib/persist.js';
 import InputPage from './pages/InputPage.jsx';
 import ResultsPage from './pages/ResultsPage.jsx';
+import InstallPrompt from './components/InstallPrompt.jsx';
 
 const initial = loadInitialState();
 
@@ -15,6 +16,7 @@ function TopBar() {
           <div className="topbar-title">SAPIENS TUTOR</div>
           <div className="topbar-sub">คำนวณโอกาสติดคณะ · ข้อมูลจริง TCAS69</div>
         </div>
+        <InstallPrompt />
       </div>
     </header>
   );

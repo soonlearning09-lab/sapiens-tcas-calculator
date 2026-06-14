@@ -1,0 +1,13 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="96" fill="#921b1b"/>
+  <!-- หมวกครุย (mortarboard) -->
+  <g fill="#ffffff">
+    <!-- กระดานบน (diamond) -->
+    <polygon points="256,128 432,196 256,264 80,196"/>
+    <!-- ฐานหมวก -->
+    <path d="M168 232 L256 266 L344 232 L344 300 C344 330 304 350 256 350 C208 350 168 330 168 300 Z"/>
+    <!-- พู่ (tassel) -->
+    <rect x="420" y="196" width="8" height="120" rx="4"/>
+    <circle cx="424" cy="332" r="18"/>
+  </g>
+</svg>
