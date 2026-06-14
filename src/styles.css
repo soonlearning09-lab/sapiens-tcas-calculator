@@ -266,6 +266,60 @@ button {
   background: #fbfffd;
 }
 
+/* ── กราฟคะแนนต่ำสุดย้อนหลัง ──────────────── */
+.hist {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--line);
+}
+.hist-title {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.hist-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  height: 76px;
+}
+.hist-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+}
+.hist-val {
+  font-size: 11px;
+  font-weight: 700;
+  color: #444;
+  margin-bottom: 2px;
+}
+.hist-bar-wrap {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.hist-bar {
+  width: 70%;
+  max-width: 32px;
+  min-height: 4px;
+  background: #d8b4b4;
+  border-radius: 4px 4px 0 0;
+  transition: height 0.2s;
+}
+.hist-bar.reached {
+  background: var(--green, #1e7a3e);
+}
+.hist-yr {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
 /* ── Cascading dropdown (เลือกคณะ) ─────────── */
 .cascade {
   display: flex;

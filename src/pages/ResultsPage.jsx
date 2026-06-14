@@ -3,6 +3,45 @@ import { evaluateProgram, isReachable, STATUS_INFO } from '../lib/calculator.js'
 import { subjectShort } from '../lib/subjects.js';
 import { buildShareUrl } from '../lib/persist.js';
 
+const HIST_YEARS = [
+  ['66', '66'],
+  ['67', '67'],
+  ['68', '68'],
+  ['69', '69'],
+];
+
+// กราฟแท่งคะแนนต่ำสุดย้อนหลัง (สเกลแท่งสัมพัทธ์เพื่อให้เห็นแนวโน้ม ตัวเลขจริงกำกับบนแท่ง)
+function ScoreHistory({ history, youScore }) {
+  if (!history) return null;
+  const present = HIST_YEARS.filter(([y]) => history[y] && history[y].min != null);
+  if (present.length < 2) return null;
+  const vals = present.map(([y]) => history[y].min);
+  const lo = Math.min(...vals);
+  const hi = Math.max(...vals);
+  const span = hi - lo || 1;
+  return (
+    <div className="hist">
+      <div className="hist-title">คะแนนต่ำสุดย้อนหลัง (TCAS)</div>
+      <div className="hist-bars">
+        {present.map(([y, label]) => {
+          const d = history[y];
+          const h = 34 + ((d.min - lo) / span) * 66; // 34%–100%
+          const reached = youScore != null && youScore >= d.min;
+          return (
+            <div className="hist-col" key={y} title={`ปี ${label}: ต่ำสุด ${d.min.toFixed(2)}${d.max != null ? ` · สูงสุด ${d.max.toFixed(2)}` : ''}`}>
+              <div className="hist-val">{d.min.toFixed(1)}</div>
+              <div className="hist-bar-wrap">
+                <div className={`hist-bar ${reached ? 'reached' : ''}`} style={{ height: `${h}%` }} />
+              </div>
+              <div className="hist-yr">'{label}</div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function ResultCard({ p, ev, rank }) {
   const info = STATUS_INFO[ev.status] || STATUS_INFO.unknown;
   return (
@@ -53,6 +92,8 @@ function ResultCard({ p, ev, rank }) {
           ⚠ ยังไม่ได้กรอก: {ev.missing.map((m) => m.candidates.map(subjectShort).join('/')).join(', ')} — คะแนนจริงอาจสูงกว่านี้
         </div>
       )}
+
+      <ScoreHistory history={p._history} youScore={ev.total} />
     </div>
   );
 }
@@ -225,7 +266,8 @@ export default function ResultsPage({ programs, scores, picks, byKey, onBack }) 
       )}
 
       <p className="data-note">
-        ⚠ คะแนนต่ำสุด/สูงสุดเป็นข้อมูลปีที่ผ่านมาจาก mytcas.com ใช้ประเมินแนวโน้มเท่านั้น
+        ⚠ คะแนนต่ำสุด/สูงสุด และประวัติย้อนหลัง (ปี 66–69) เป็นข้อมูลผลการคัดเลือกจริงจาก ทปอ./mytcas.com
+        ใช้ประเมินแนวโน้มเท่านั้น แท่ง<b style={{ color: 'var(--green)' }}>สีเขียว</b>=คะแนนคุณถึงเกณฑ์ปีนั้น
       </p>
     </main>
   );

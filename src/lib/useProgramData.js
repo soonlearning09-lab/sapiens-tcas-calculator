@@ -28,12 +28,17 @@ export function useProgramData() {
         return r.json();
       }),
       fetch(`${base}data/programs.meta.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      // ประวัติคะแนนต่ำสุด/สูงสุดย้อนหลัง (ไม่บังคับ — ถ้าโหลดไม่ได้ก็ข้าม)
+      fetch(`${base}data/history.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
     ])
-      .then(([programs, meta]) => {
+      .then(([programs, meta, history]) => {
         if (!alive) return;
-        const enriched = programs.map((p) => ({
+        const enriched = programs.map((p) => {
+          const _key = recordKey(p);
+          return {
           ...p,
-          _key: recordKey(p),
+          _key,
+          _history: history ? history[_key] || null : null,
           _name: displayName(p),
           _uni: displayUni(p),
           _search: [
@@ -47,7 +52,8 @@ export function useProgramData() {
             .filter(Boolean)
             .join(' ')
             .toLowerCase(),
-        }));
+          };
+        });
         setState({ loading: false, error: null, programs: enriched, meta });
       })
       .catch((e) => alive && setState({ loading: false, error: e.message, programs: [], meta: null }));
