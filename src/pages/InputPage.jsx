@@ -49,28 +49,53 @@ function ScoreGroup({ group, items, scores, setScore, defaultOpen }) {
   );
 }
 
+// ป้ายกำกับหลักสูตรใน dropdown (เสริมประเภท/วิทยาเขตเมื่อช่วยแยกความกำกวม)
+function programLabel(p) {
+  const extra = [];
+  if (p.project_name_th) extra.push(p.project_name_th);
+  if (p.program_type_name_th && p.program_type_name_th !== 'ภาษาไทย ปกติ')
+    extra.push(p.program_type_name_th);
+  if (p.campus_name_th && p.campus_name_th !== 'วิทยาเขตหลัก') extra.push(p.campus_name_th);
+  return extra.length ? `${p._name} · ${extra.join(' · ')}` : p._name;
+}
+
+const thSort = (a, b) => a.localeCompare(b, 'th');
+
 function ProgramPicker({ programs, picks, setPicks, byKey }) {
-  const [q, setQ] = useState('');
-  const results = useMemo(() => {
-    const query = q.trim().toLowerCase();
-    if (query.length < 2) return [];
-    const terms = query.split(/\s+/);
-    const out = [];
+  const [uni, setUni] = useState('');
+  const [fac, setFac] = useState('');
+  const [prog, setProg] = useState('');
+
+  // ดัชนี: มหาวิทยาลัย → คณะ → รายการหลักสูตร (สร้างครั้งเดียว)
+  const tree = useMemo(() => {
+    const m = new Map();
     for (const p of programs) {
-      if (terms.every((t) => p._search.includes(t))) {
-        out.push(p);
-        if (out.length >= 40) break;
-      }
+      const u = p.university_name_th || '(ไม่ระบุมหาวิทยาลัย)';
+      const f = p.faculty_name_th || '(ไม่ระบุคณะ)';
+      if (!m.has(u)) m.set(u, new Map());
+      const fm = m.get(u);
+      if (!fm.has(f)) fm.set(f, []);
+      fm.get(f).push(p);
     }
-    return out;
-  }, [q, programs]);
+    return m;
+  }, [programs]);
+
+  const uniList = useMemo(() => [...tree.keys()].sort(thSort), [tree]);
+  const facList = useMemo(
+    () => (uni && tree.has(uni) ? [...tree.get(uni).keys()].sort(thSort) : []),
+    [tree, uni]
+  );
+  const progList = useMemo(() => {
+    if (!uni || !fac || !tree.get(uni)?.has(fac)) return [];
+    return [...tree.get(uni).get(fac)].sort((a, b) => thSort(programLabel(a), programLabel(b)));
+  }, [tree, uni, fac]);
 
   const pickedSet = new Set(picks);
 
   function add(key) {
-    if (picks.length >= MAX_PICKS || pickedSet.has(key)) return;
+    if (!key || picks.length >= MAX_PICKS || pickedSet.has(key)) return;
     setPicks([...picks, key]);
-    setQ('');
+    setProg(''); // คงมหาลัย/คณะไว้ เผื่อเพิ่มหลักสูตรอื่นในคณะเดิม
   }
   function remove(key) {
     setPicks(picks.filter((k) => k !== key));
@@ -83,42 +108,84 @@ function ProgramPicker({ programs, picks, setPicks, byKey }) {
     setPicks(next);
   }
 
+  const full = picks.length >= MAX_PICKS;
+  const alreadyPicked = prog && pickedSet.has(prog);
+
   return (
     <>
-      <div className="search-wrap">
-        <input
-          className="search-input"
-          placeholder="พิมพ์ชื่อคณะ / มหาวิทยาลัย / สาขา เช่น วิศวะ จุฬา"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-        />
-        {q.trim().length >= 2 && (
-          <div className="search-results">
-            {results.length === 0 ? (
-              <div className="search-empty">ไม่พบหลักสูตรที่ตรงกับ “{q}”</div>
-            ) : (
-              results.map((p) => (
-                <div
-                  className="search-item"
-                  key={p._key}
-                  onClick={() => add(p._key)}
-                  style={pickedSet.has(p._key) ? { opacity: 0.4, pointerEvents: 'none' } : null}
-                >
-                  <div className="pname">{p._name}</div>
-                  <div className="puni">
-                    {p._uni}
-                    {p.program_type_name_th ? ` · ${p.program_type_name_th}` : ''}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        )}
+      <div className="cascade">
+        <label className="cascade-label">มหาวิทยาลัย</label>
+        <select
+          className="cascade-select"
+          value={uni}
+          onChange={(e) => {
+            setUni(e.target.value);
+            setFac('');
+            setProg('');
+          }}
+        >
+          <option value="">— เลือกมหาวิทยาลัย ({uniList.length}) —</option>
+          {uniList.map((u) => (
+            <option key={u} value={u}>
+              {u}
+            </option>
+          ))}
+        </select>
+
+        <label className="cascade-label">คณะ</label>
+        <select
+          className="cascade-select"
+          value={fac}
+          disabled={!uni}
+          onChange={(e) => {
+            setFac(e.target.value);
+            setProg('');
+          }}
+        >
+          <option value="">
+            {uni ? `— เลือกคณะ (${facList.length}) —` : '— เลือกมหาวิทยาลัยก่อน —'}
+          </option>
+          {facList.map((f) => (
+            <option key={f} value={f}>
+              {f}
+            </option>
+          ))}
+        </select>
+
+        <label className="cascade-label">หลักสูตร / สาขา</label>
+        <select
+          className="cascade-select"
+          value={prog}
+          disabled={!fac}
+          onChange={(e) => setProg(e.target.value)}
+        >
+          <option value="">
+            {fac ? `— เลือกหลักสูตร (${progList.length}) —` : '— เลือกคณะก่อน —'}
+          </option>
+          {progList.map((p) => (
+            <option key={p._key} value={p._key} disabled={pickedSet.has(p._key)}>
+              {programLabel(p)}
+              {pickedSet.has(p._key) ? ' (เลือกแล้ว)' : ''}
+            </option>
+          ))}
+        </select>
+
+        <button
+          className="btn btn-primary cascade-add"
+          disabled={!prog || full || alreadyPicked}
+          onClick={() => add(prog)}
+        >
+          {full
+            ? `เลือกครบ ${MAX_PICKS} อันดับแล้ว`
+            : alreadyPicked
+            ? 'เพิ่มคณะนี้แล้ว'
+            : '+ เพิ่มคณะนี้'}
+        </button>
       </div>
 
       {picks.length === 0 ? (
         <p className="muted-center" style={{ padding: 14 }}>
-          ยังไม่ได้เลือกคณะ — ค้นหาด้านบนแล้วแตะเพื่อเพิ่ม (สูงสุด {MAX_PICKS} อันดับ)
+          ยังไม่ได้เลือกคณะ — เลือกจาก dropdown ด้านบนแล้วกด “เพิ่มคณะนี้” (สูงสุด {MAX_PICKS} อันดับ)
         </p>
       ) : (
         picks.map((key, i) => {
@@ -189,7 +256,7 @@ export default function InputPage({ programs, scores, setScores, picks, setPicks
 
       <div className="section">
         <h2 className="section-title">2. เลือกคณะที่สนใจ</h2>
-        <p className="section-sub">เรียงตามลำดับความต้องการ สูงสุด {MAX_PICKS} อันดับ (จะไม่เลือกก็ได้ — ระบบจะแนะนำคณะที่คะแนนถึงให้)</p>
+        <p className="section-sub">เลือกมหาวิทยาลัย → คณะ → หลักสูตร แล้วกดเพิ่ม · เรียงตามลำดับความต้องการ สูงสุด {MAX_PICKS} อันดับ (จะไม่เลือกก็ได้ — ระบบจะแนะนำคณะที่คะแนนถึงให้)</p>
         <ProgramPicker programs={programs} picks={picks} setPicks={setPicks} byKey={byKey} />
       </div>
 
