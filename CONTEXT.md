@@ -8,6 +8,14 @@
 **🔴 LIVE:** https://soonlearning09-lab.github.io/sapiens-tcas-calculator/
 (repo: `soonlearning09-lab/sapiens-tcas-calculator` · public · GitHub Pages ผ่าน Actions)
 
+**งานล่าสุด (2026-06-14, รอบ deploy):**
+1. ✅ Deploy ขึ้น GitHub Pages (Actions) + auto-refresh ข้อมูลรายสัปดาห์
+2. ✅ **PWA** — ติดตั้งบนคอม/มือถือได้ + ใช้ offline (vite-plugin-pwa)
+3. ✅ **clamp คะแนน** ทุกช่องไม่ให้เกินเต็ม (สอบ /100, GPAX /4) + แสดง "/เต็ม"
+4. ✅ **แยก TPAT1 เป็น 3 พาร์ท** (เชาวน์ปัญญา/จริยธรรมแพทย์/ความคิดเชื่อมโยง) + derive ตัวรวม
+5. ✅ **เลือกคณะแบบ cascading dropdown** (มหาลัย→คณะ→หลักสูตร) แทนช่องค้นหา
+6. ✅ **ประวัติคะแนนต่ำสุด 4 ปี (66–69)** จากไฟล์ Excel ทปอ. → กราฟในการ์ดผล
+
 ---
 
 ## 1. โปรเจคนี้คืออะไร / ประวัติ
@@ -18,7 +26,7 @@
 - โค้ด LINE เดิมย้ายไปโฟลเดอร์ `_legacy/` (เก็บอ้างอิงดีไซน์ — `results.html`/`stats.html` เป็นต้นแบบแบรนด์ SAPIENS TUTOR)
 - แบรนด์: **SAPIENS TUTOR** (ธีมแดง `#921b1b`)
 
-ฟีเจอร์หลัก: กรอกคะแนน → เลือกคณะได้ถึง 10 อันดับ (ดูโอกาสติด) + **แนะนำคณะทั้งหมดที่คะแนนถึง** (กรองตามมหาลัย/ประเภท/ระดับโอกาส) + แชร์ผลผ่านลิงก์
+ฟีเจอร์หลัก: กรอกคะแนน (clamp ไม่เกินเต็ม) → เลือกคณะได้ถึง 10 อันดับ ผ่าน **dropdown มหาลัย→คณะ→หลักสูตร** (ดูโอกาสติด + **กราฟคะแนนต่ำสุด 4 ปีย้อนหลัง**) + **แนะนำคณะทั้งหมดที่คะแนนถึง** (กรองตามมหาลัย/ประเภท/ระดับโอกาส) + แชร์ผลผ่านลิงก์ + **ติดตั้งเป็นแอป (PWA)**
 
 ---
 
@@ -26,8 +34,10 @@
 
 **Static web ไม่มี backend ตอนรันจริง** — แบ่ง 2 ชั้น:
 
-1. **ชั้นข้อมูล (build-time):** `scripts/build-data.mjs` ดึงข้อมูลจริงจาก mytcas แล้วรวมเป็น `public/data/programs.json` (+ `programs.meta.json`) รันด้วย `npm run build:data`
-2. **ชั้นแอป (runtime):** React โหลด `programs.json` ครั้งเดียว แล้วค้นหา/กรอง/คำนวณทั้งหมดในเบราว์เซอร์
+1. **ชั้นข้อมูล (build-time):**
+   - `scripts/build-data.mjs` ดึงข้อมูลจริงจาก mytcas → `public/data/programs.json` (+ `programs.meta.json`) · `npm run build:data`
+   - `scripts/build-history.py` รวมคะแนนย้อนหลัง 4 ปีจาก Excel ทปอ. (`data/*.xlsx`) → `public/data/history.json` · `python scripts/build-history.py` (รันครั้งเดียวต่อปี — ข้อมูลปีเก่าไม่เปลี่ยน)
+2. **ชั้นแอป (runtime):** React โหลด `programs.json` + `history.json` ครั้งเดียว แล้วค้นหา/กรอง/คำนวณทั้งหมดในเบราว์เซอร์ · เป็น **PWA** (service worker cache ข้อมูล → ใช้ offline ได้หลังเปิดครั้งแรก)
 
 > ทำไมต้อง pre-build ข้อมูล: ฟีเจอร์ "คณะทั้งหมดที่คะแนนถึง" ต้องรู้น้ำหนัก+คะแนนต่ำสุดของ **ทุกสาขา** ซึ่งอยู่ในไฟล์รายสาขา (`ly-programs/{id}.json`) — ไม่มี endpoint รวม และ browser ยิงทีละ ~4,900 ครั้งต่อ visit ไม่ได้ จึงต้องรวมไว้ล่วงหน้า
 
@@ -50,6 +60,12 @@
 
 > ⚠️ `programs.json` (ไฟล์ที่ generate) มี hash ของ chunk URL ฝังในความรู้นี้ — ถ้า mytcas deploy ใหม่ ชื่อ chunk (`main.198bc51d.chunk.js`) จะเปลี่ยน แต่ **endpoint ข้อมูล (S3) ไม่เปลี่ยน** crawler จึงยังทำงานได้
 
+**คะแนนย้อนหลัง — API ไม่มี! ใช้ Excel ทางการ ทปอ. แทน:**
+- ตรวจครบแล้ว (S3, live API `appspot`, year-paths, bucket listing) — endpoint สาธารณะมีคะแนน **ปีเดียว** (ปี 68; ยืนยันว่า `min_score`=59.98 ตรงกับ Excel ปี 68)
+- ไฟล์ Excel `data/TCAS66/67/69_maxmin.xlsx` + `T68-stat-...xlsx` (เก็บใน repo) — ทุกไฟล์มีคอลัมน์ **`รหัสหลักสูตร`** (= program_id) ใช้ join ได้ตรง
+- ปี 69/65 มีคอลัมน์ `รหัสสาขา`/`รหัสโครงการ` ด้วย → join แม่นยำกว่า; ปี 66–68 มีแค่ program_id + ชื่อ `สาขา/วิชาเอก` (ตรงกับ `major_name_th` ใช้แยกหลายสาขา)
+- `build-history.py` กรองค่า `min ≤ 0` ทิ้ง (= ไม่มีรายงานคะแนน)
+
 ---
 
 ## 4. โครงสร้างข้อมูล 1 record ใน `programs.json`
@@ -70,6 +86,12 @@
 ```
 ปัจจุบัน: **6,899 records · 5,954 มี min_score · 74 มหาวิทยาลัย · 5 ประเภท** (ทปอ./มรภ./มทร./เอกชน/สมทบ)
 
+**`history.json`** (แยกไฟล์, ~424KB) keyed ด้วย `_key` (=`program_id__major_id__project_id`):
+```jsonc
+"10010121300001A__0__0": { "66":{"min":54.15,"max":80.83}, "67":{...}, "68":{...}, "69":{...} }
+```
+**3,461 records มีประวัติ · 2,107 ครบ 4 ปี** · app แนบเข้า record เป็นฟิลด์ `_history` (ดู `useProgramData.js`)
+
 ---
 
 ## 5. กฎการคำนวณ (ตรวจสอบกับตารางทางการของ mytcas แล้ว)
@@ -77,10 +99,12 @@
 **รหัสวิชา** อยู่ใน `src/lib/subjects.js` (ยืนยันครบทุก key ที่ปรากฏจริง — ดู memory `mytcas-real-data-api`):
 - `gpax`, `gpax5/6_score`, `gpa21..29` → **max_value = 4** → scale ×25
 - `tgat`, `tgat1/2/3`, `tpat1`+`tpat11/12/13`, `tpat2`+`tpat21/22/23`, `tpat3/4/5` → max 100
+  - **TPAT1 แยก 3 พาร์ทในฟอร์ม:** `tpat11` เชาวน์ปัญญา · `tpat12` จริยธรรมแพทย์ · `tpat13` ความคิดเชื่อมโยง (group `'TPAT'`) — ตัวรวม `tpat1` ซ่อน (group `'พิเศษ'`) แต่ `withDerivedScores()` ใน calculator คำนวณ `tpat1 = ค่าเฉลี่ย 3 พาร์ทที่กรอก` ให้ ~24 หลักสูตรที่อ้างอิง tpat1 รวมยังคำนวณได้
 - `a_lv_61`=คณิต1, `_62`=คณิต2, `_63`=วิทย์, `_64`=ฟิสิกส์, `_65`=เคมี, `_66`=ชีวะ, `_70`=สังคมศาสตร์, `_81`=ไทย, `_82`=อังกฤษ, `_83..89`=ภาษาที่2 → max 100
 - สอบเฉพาะมหาลัย (ไม่ขึ้นฟอร์ม, group `'พิเศษ'`): `su001-4`, `tu0xx`, `vnet_51`, `ged_score`
 
 **การแปลงสเกล:** `score100 = rawValue / max_value × 100` (เทียบเท่า GPAX × 25) — ยืนยันถูกต้อง
+**clamp คะแนนกรอก:** `clampScore()` ใน `subjects.js` บีบค่าให้อยู่ใน 0..max ของวิชา (ตอนพิมพ์) — ฟอร์มแสดง "/เต็ม" ต่อช่อง
 
 **การถ่วงน้ำหนัก** (`src/lib/calculator.js` → `evaluateProgram`):
 - รวม `score100 × weight / 100` ของทุก component → ได้ total สเกล 0-100 เทียบกับ `min_score` ได้ตรง
@@ -98,16 +122,22 @@
 
 ```
 scripts/build-data.mjs    crawler → public/data/programs.json (+ .meta.json)
+scripts/build-history.py  Excel ทปอ. (data/*.xlsx) → public/data/history.json (join ด้วยรหัสหลักสูตร)
+data/*.xlsx               ไฟล์ผลคัดเลือกทางการ ทปอ. ปี 65–69 (ต้นทางของ history.json)
 src/main.jsx              entry
-src/App.jsx               state กลาง (scores, picks, view) + persistence
-src/lib/subjects.js       ตารางรหัสวิชา + toScale100
-src/lib/calculator.js     evaluateProgram, isReachable, STATUS_INFO
-src/lib/useProgramData.js โหลด+enrich programs.json (เพิ่ม _key/_name/_uni/_search)
+src/App.jsx               state กลาง (scores, picks, view) + persistence + <InstallPrompt/>
+src/lib/subjects.js       ตารางรหัสวิชา + toScale100 + clampScore + TPAT1_PARTS
+src/lib/calculator.js     evaluateProgram, withDerivedScores (tpat1), isReachable, STATUS_INFO
+src/lib/useProgramData.js โหลด+enrich programs.json + history.json (เพิ่ม _key/_name/_uni/_search/_history)
 src/lib/persist.js        localStorage + ลิงก์แชร์ (?d=base64)
-src/pages/InputPage.jsx   ฟอร์มคะแนน (กลุ่มยุบได้) + ค้นหา/เลือกคณะ 10 อันดับ
-src/pages/ResultsPage.jsx แท็บ "อันดับที่เลือก" + "คณะที่คะแนนถึง" (ตัวกรอง) + ปุ่มแชร์
-src/styles.css            design system SAPIENS (ตัวแปร --red ฯลฯ)
-.github/workflows/refresh-data.yml  ดึงข้อมูลใหม่รายสัปดาห์ + commit
+src/components/InstallPrompt.jsx  ปุ่มติดตั้ง PWA (beforeinstallprompt) + คำแนะนำ iOS
+src/pages/InputPage.jsx   ฟอร์มคะแนน (clamp/แสดงเต็ม) + cascading dropdown เลือกคณะ 10 อันดับ
+src/pages/ResultsPage.jsx แท็บผล + กราฟ <ScoreHistory/> (คะแนนต่ำสุด 4 ปี) + ปุ่มแชร์
+src/styles.css            design system SAPIENS (ตัวแปร --red ฯลฯ) + .hist / .cascade / .install-*
+public/logo.svg + *.png   ไอคอน PWA (สร้างด้วย pwa-assets-generator)
+vite.config.js            base './' + VitePWA (manifest + service worker + runtime cache)
+.github/workflows/deploy.yml        build + deploy GitHub Pages ทุก push main
+.github/workflows/refresh-data.yml  ดึงข้อมูลใหม่รายสัปดาห์ + commit (ไม่แตะ history.json)
 _legacy/                  โค้ด LINE bot เดิม (อ้างอิงดีไซน์)
 ```
 
@@ -119,10 +149,12 @@ _legacy/                  โค้ด LINE bot เดิม (อ้างอิ
 npm install
 npm run build:data   # ดึงข้อมูล mytcas ใหม่ (~1-2 นาที; concurrency 20)
 npm run dev          # dev server (เปิด browser อัตโนมัติ พอร์ต 5173)
-npm run build        # → dist/  (vite base: './' deploy ได้ทั้ง root และ subpath)
+npm run build        # → dist/  (vite base: './' + สร้าง service worker/manifest)
 npm run preview      # ดู build จริง
+python scripts/build-history.py   # รวมคะแนนย้อนหลังใหม่ (เมื่อมีไฟล์ Excel ปีใหม่) ต้อง pip install openpyxl pandas
 ```
-ขนาดไฟล์ข้อมูล: raw ~9.3MB / **gzip ~0.34MB** (host static บีบอัตโนมัติ) · JS bundle 53KB gzip
+ขนาดไฟล์ข้อมูล: programs.json raw ~9.3MB / **gzip ~0.34MB** · history.json ~424KB · JS bundle ~54KB gzip
+**PWA:** `vite-plugin-pwa` (registerType autoUpdate) — precache app shell (~190KB) + runtime StaleWhileRevalidate สำหรับ `data/*.json` (ใช้ offline หลังเปิดครั้งแรก)
 
 **Deploy (ทำแล้ว — GitHub Pages ผ่าน Actions):**
 - repo: `soonlearning09-lab/sapiens-tcas-calculator` (public) · live: https://soonlearning09-lab.github.io/sapiens-tcas-calculator/
@@ -141,14 +173,20 @@ npm run preview      # ดู build จริง
 - ✅ ทุก score key ที่ปรากฏจริง มีใน `subjects.js` ครบ
 - ✅ ผลคำนวณ monotonic + ไม่มี total เกิน 100 / NaN
 - ✅ build ผ่าน, preview เสิร์ฟ index + data + ลิงก์แชร์ ได้
+- ✅ deploy live (GitHub Pages) เสิร์ฟ index/programs/history/sw/manifest/icons ได้ (200 ทั้งหมด)
+- ✅ derive `tpat1` = ค่าเฉลี่ย 3 พาร์ท (ทดสอบ 80/70/60→70, contrib ถูก)
+- ✅ clamp คะแนน (gpax 5→4, tgat 150→100, ติดลบ→0)
+- ✅ join history ด้วยรหัสหลักสูตร (66:2426/67:2616/68:2872/69:3312 รายการ) — ค่าตรวจสมเหตุผล
 
 ---
 
 ## 9. ข้อจำกัด & ไอเดียทำต่อ
 
-- คะแนนต่ำสุดเป็นข้อมูล **ปีที่ผ่านมา** ใช้ประเมินแนวโน้ม ไม่ใช่การรับรองว่าติด
+- คะแนนต่ำสุดเป็นข้อมูล **ผลคัดเลือกปีก่อน ๆ** ใช้ประเมินแนวโน้ม ไม่ใช่การรับรองว่าติด
 - ~834 program_id ยังไม่มีไฟล์ ly-programs (จะมีเพิ่มเมื่อ mytcas อัปเดต)
 - สอบเฉพาะมหาลัย (su/tu/vnet/ged) ไม่มีช่องกรอก → หลักสูตรนั้นจะขึ้น `incomplete` ถ้าใช้วิชาเหล่านี้เป็นหลัก
-- **ไอเดีย:** ลดขนาด `programs.json` ด้วย lookup table (ชื่อมหาลัย/คณะซ้ำเยอะ) · หน้า detail ต่อหลักสูตร (ดึง breakdown สด) · export ผลเป็นรูป/PDF · กราฟแนวโน้มคะแนน · deploy จริง (GitHub Pages/Cloudflare Pages) · ตรวจ max_value จริงของ su/tu/vnet
+- ประวัติคะแนนครอบคลุม 3,461/6,899 records (ที่เหลือไม่มีในไฟล์ Excel หรือ join ไม่ได้) · กราฟต้องมี ≥2 ปีจึงแสดง
+- ปีใหม่ (เช่น TCAS70): วางไฟล์ Excel ใน `data/` แล้วเพิ่มปีใน `YEARS` ของ `build-history.py` + รันใหม่ (เพิ่มปี 65 ก็ทำได้เหมือนกัน)
+- **ไอเดียทำต่อ:** เพิ่มปี 65 เข้ากราฟ · ลดขนาด `programs.json` ด้วย lookup table · หน้า detail ต่อหลักสูตร · export ผลเป็นรูป/PDF · อัปเกรด GitHub Actions รองรับ Node 24 (บังคับ 2026-06-16)
 
 หมายเหตุ: Claude มี memory เพิ่มเติมที่โหลดอัตโนมัติทุก session — `mytcas-real-data-api` และ `pivot-to-realtime-calculator`
