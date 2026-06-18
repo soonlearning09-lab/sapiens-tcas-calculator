@@ -56,6 +56,7 @@
 **ที่ใช้จริง:**
 - ดัชนีหลักสูตร: `{apiBaseUrl}/courses.json` (~6MB, 4,921 program_id) — มี ชื่อมหาลัย/วิทยาเขต/คณะ/สาขา (TH+EN), จำนวนรับ, ค่าเทอม, อัตราจบ/ได้งาน, เงินเดือนมัธยฐาน
 - รายละเอียดต่อสาขา: `{apiBaseUrl}/ly-programs/{program_id}.json` — array (1 element ต่อ major/project) แต่ละตัวมี `scores` (น้ำหนักทางการ), `min_score`/`max_score` (จริง), `est_min_score_mean` (ทำนาย), `receive_student_number`
+- **เกณฑ์รายรอบ:** `{apiBaseUrl}/rounds/{program_id}.json` — array หลายเอนทรี (รอบ×โครงการ); `type` ขึ้นต้น `"1_"/"2_"/"3_"/"4_"` = รอบ (รอบ 3 = Admission ที่แอปคำนวณ) แต่ละตัวมี `min_total_score` (คะแนนรวมขั้นต่ำ), `min_gpax`, flags `only_formal/only_international/only_vocational/only_non_formal/only_ged` (**1=รับ, 2=ไม่รับ**), `grad_current`, `t_score`. ป้ายทางการ (จาก bundle): formal=รร.หลักสูตรแกนกลาง · international=นานาชาติ · vocational=อาชีวะ · non_formal=ตามอัธยาศัย(กศน.) · ged=GED. รอบ 3 ส่วนใหญ่มีเอนทรีเดียว (ระดับหลักสูตร ไม่มี major/project); บางหลักสูตรแยกหลายเอนทรี → join ด้วย (major_id, project_id)
 - **403/404 = หลักสูตรนั้นยังไม่ประกาศเกณฑ์** (ปกติ ~834 รายการ) — ไม่ใช่ error
 
 > ⚠️ `programs.json` (ไฟล์ที่ generate) มี hash ของ chunk URL ฝังในความรู้นี้ — ถ้า mytcas deploy ใหม่ ชื่อ chunk (`main.198bc51d.chunk.js`) จะเปลี่ยน แต่ **endpoint ข้อมูล (S3) ไม่เปลี่ยน** crawler จึงยังทำงานได้
@@ -78,13 +79,16 @@
   "min_score": 59.98, "max_score": 82.6, "est_min_score_mean": 58.23,
   "receive_student_number": 390,
   "scores": { "tgat": 20, "tpat3": 30, "a_lv_61": 20, "a_lv_64": 20, "a_lv_65": 10 },
+  // คุณสมบัติพื้นฐานรอบ 3 (จาก rounds/*.json — มีเมื่อพบเอนทรี; เก็บเฉพาะ field ที่มีค่า):
+  "qual": { "accepts": ["formal","inter","voc","nonformal","ged"], "min_total": 51, "min_gpax": 2 },
   // + metadata จาก courses.json:
   "university_id", "university_type_name_th", "university_name_th"/"_en",
   "campus_name_th", "faculty_name_th"/"_en", "field_name_th", "group_field_th",
   "cost", "graduate_rate", "employment_rate", "median_salary"
 }
 ```
-ปัจจุบัน: **6,899 records · 5,954 มี min_score · 74 มหาวิทยาลัย · 5 ประเภท** (ทปอ./มรภ./มทร./เอกชน/สมทบ)
+ปัจจุบัน: **6,899 records · 5,954 มี min_score · 6,836 มี qual · 74 มหาวิทยาลัย · 5 ประเภท** (ทปอ./มรภ./มทร./เอกชน/สมทบ)
+- `qual.accepts` = รหัสหลักสูตรที่รับ (`formal/inter/voc/nonformal/ged`) · `min_total`/`min_gpax` เก็บเฉพาะเมื่อ >0 (min_gpax กรอง >4 = sentinel) · แสดงใน `ResultCard` (`<Qualifications/>`) พร้อม warning "ไม่ถึง" เมื่อ GPAX/คะแนนรวมผู้ใช้ < ขั้นต่ำ
 
 **`history.json`** (แยกไฟล์, ~424KB) keyed ด้วย `_key` (=`program_id__major_id__project_id`):
 ```jsonc

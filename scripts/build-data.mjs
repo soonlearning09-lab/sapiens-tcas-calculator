@@ -3,6 +3,8 @@
 // แหล่งข้อมูล (สาธารณะ, CORS เปิด — ดู memory/mytcas-real-data-api.md):
 //   ดัชนีหลักสูตร : https://my-tcas.s3.ap-southeast-1.amazonaws.com/mytcas/courses.json
 //   รายละเอียด    : https://my-tcas.s3.ap-southeast-1.amazonaws.com/mytcas/ly-programs/{program_id}.json
+//   เกณฑ์รายรอบ   : https://my-tcas.s3.ap-southeast-1.amazonaws.com/mytcas/rounds/{program_id}.json
+//                   (ใช้รอบ 3 Admission = type ขึ้นต้น "3_" → คุณสมบัติพื้นฐาน + คะแนนรวมขั้นต่ำ)
 //
 // วิธีรัน:  node scripts/build-data.mjs
 // ผลลัพธ์:  public/data/programs.json  (+ programs.meta.json)
@@ -38,6 +40,38 @@ async function getJSON(url, tries = RETRY) {
   }
 }
 
+// normalize major/project id ("0"/""/undefined ถือว่า "0") เพื่อ join rounds ↔ ly-programs
+const nid = (v) => (v === undefined || v === null || v === '' || v === '0' ? '0' : String(v));
+
+// แปลง 1 เอนทรีรอบ 3 → คุณสมบัติพื้นฐานแบบกระชับ (เก็บเฉพาะที่มีค่า)
+//   flags only_*: 1 = รับ, 2 = ไม่รับ → เก็บเฉพาะรายการที่รับ (accepts)
+function toQual(e) {
+  if (!e) return null;
+  const accepts = [];
+  if (e.only_formal === 1) accepts.push('formal'); // หลักสูตรแกนกลาง
+  if (e.only_international === 1) accepts.push('inter'); // หลักสูตรนานาชาติ
+  if (e.only_vocational === 1) accepts.push('voc'); // หลักสูตรอาชีวะ
+  if (e.only_non_formal === 1) accepts.push('nonformal'); // หลักสูตรตามอัธยาศัย (กศน.)
+  if (e.only_ged === 1) accepts.push('ged'); // GED
+  const q = {};
+  if (accepts.length) q.accepts = accepts;
+  const mt = r2(e.min_total_score);
+  if (mt && mt > 0) q.min_total = mt; // คะแนนรวมขั้นต่ำ
+  const mg = r2(e.min_gpax);
+  if (mg && mg > 0 && mg <= 4) q.min_gpax = mg; // GPAX ขั้นต่ำ (>4 = ค่า sentinel ไม่กำหนด)
+  return Object.keys(q).length ? q : null;
+}
+
+// เลือกเอนทรีรอบ 3 ให้ตรงกับ (major_id, project_id) ของ record; fallback = เอนทรีเดียว/ตัวแรก
+function qualFor(r3list, majorId, projectId) {
+  if (!r3list || !r3list.length) return null;
+  const k = nid(majorId) + '__' + nid(projectId);
+  let e = r3list.find((x) => nid(x.major_id) + '__' + nid(x.project_id) === k);
+  if (!e) e = r3list.find((x) => nid(x.major_id) === nid(majorId));
+  if (!e) e = r3list[0]; // เอนทรีระดับหลักสูตร (ไม่มี major/project) หรือ default
+  return toQual(e);
+}
+
 // เก็บเฉพาะ field ที่ใช้ในแอป เพื่อคุมขนาดไฟล์
 function pickIndex(c) {
   return {
@@ -67,6 +101,7 @@ async function run() {
   const records = [];
   let done = 0;
   let withScores = 0;
+  let withQual = 0;
   let noDetail = 0;
   let failed = 0;
 
@@ -76,13 +111,22 @@ async function run() {
       const c = queue.shift();
       const meta = pickIndex(c);
       try {
-        const arr = await getJSON(`${BASE}/ly-programs/${c.program_id}.json`);
+        // ดึงรายละเอียดสาขา + เกณฑ์รายรอบพร้อมกัน
+        const [arr, rounds] = await Promise.all([
+          getJSON(`${BASE}/ly-programs/${c.program_id}.json`),
+          getJSON(`${BASE}/rounds/${c.program_id}.json`),
+        ]);
+        const r3list = Array.isArray(rounds)
+          ? rounds.filter((x) => String(x.type || '').startsWith('3_'))
+          : [];
         if (!Array.isArray(arr) || arr.length === 0) {
           noDetail++;
         } else {
           for (const it of arr) {
             const hasScores = it.scores && Object.keys(it.scores).length > 0;
             if (hasScores) withScores++;
+            const qual = qualFor(r3list, it.major_id, it.project_id);
+            if (qual) withQual++;
             records.push({
               program_id: it.program_id ?? c.program_id,
               major_id: it.major_id ?? '0',
@@ -96,6 +140,7 @@ async function run() {
               est_min_score_mean: r2(it.est_min_score_mean),
               receive_student_number: it.receive_student_number ?? null,
               scores: it.scores || null,
+              ...(qual ? { qual } : null),
               ...meta,
             });
           }
@@ -119,6 +164,7 @@ async function run() {
     course_count: courses.length,
     record_count: records.length,
     records_with_scores: withScores,
+    records_with_qual: withQual,
     programs_without_detail: noDetail,
     failed,
   };
@@ -128,6 +174,7 @@ async function run() {
   console.log('\n✓ เสร็จสิ้น');
   console.log(`  records        : ${records.length}`);
   console.log(`  มีสัดส่วนคะแนน  : ${withScores}`);
+  console.log(`  มีคุณสมบัติรอบ3 : ${withQual}`);
   console.log(`  ไม่มีรายละเอียด : ${noDetail}`);
   console.log(`  ล้มเหลว        : ${failed}`);
   console.log(`  เวลา           : ${secs}s`);

@@ -249,7 +249,7 @@ export default function InputPage({ programs, scores, setScores, picks, setPicks
             items={g.items}
             scores={scores}
             setScore={setScore}
-            defaultOpen={idx < 4 && g.group !== 'TPAT'}
+            defaultOpen={idx < 4}
           />
         ))}
       </div>

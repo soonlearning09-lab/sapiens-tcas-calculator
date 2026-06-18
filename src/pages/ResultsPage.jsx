@@ -42,7 +42,59 @@ function ScoreHistory({ history, youScore }) {
   );
 }
 
-function ResultCard({ p, ev, rank }) {
+// ป้ายภาษาไทยของหลักสูตรที่รับ (ตรงกับ flags only_* ของ mytcas)
+const CURRIC_LABEL = {
+  formal: 'แกนกลาง',
+  inter: 'นานาชาติ',
+  voc: 'อาชีวะ',
+  nonformal: 'กศน.',
+  ged: 'GED',
+};
+
+// คุณสมบัติพื้นฐาน (รอบ 3 Admission): หลักสูตรที่รับ + คะแนนรวม/ GPAX ขั้นต่ำ
+function Qualifications({ qual, ev, scores }) {
+  if (!qual) return null;
+  const accepts = qual.accepts || [];
+  const gpax = scores?.gpax;
+  const gpaxBad = qual.min_gpax != null && gpax !== undefined && gpax !== '' && Number(gpax) < qual.min_gpax;
+  const totalBad = qual.min_total != null && ev.total != null && ev.total < qual.min_total;
+  return (
+    <div className="qual">
+      {accepts.length > 0 && (
+        <div className="qual-row">
+          <span className="qual-lbl">รับผู้จบ</span>
+          {accepts.length === 5 ? (
+            <span className="qual-chip">ทุกหลักสูตร</span>
+          ) : (
+            accepts.map((a) => (
+              <span className="qual-chip" key={a}>
+                {CURRIC_LABEL[a] || a}
+              </span>
+            ))
+          )}
+        </div>
+      )}
+      {(qual.min_total != null || qual.min_gpax != null) && (
+        <div className="qual-row">
+          {qual.min_total != null && (
+            <span className={`qual-min ${totalBad ? 'bad' : ''}`}>
+              คะแนนรวมขั้นต่ำ {qual.min_total}
+              {totalBad ? ' (ไม่ถึง)' : ''}
+            </span>
+          )}
+          {qual.min_gpax != null && (
+            <span className={`qual-min ${gpaxBad ? 'bad' : ''}`}>
+              GPAX ขั้นต่ำ {qual.min_gpax.toFixed(2)}
+              {gpaxBad ? ' (ไม่ถึง)' : ''}
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ResultCard({ p, ev, rank, scores }) {
   const info = STATUS_INFO[ev.status] || STATUS_INFO.unknown;
   return (
     <div className="result-card">
@@ -86,6 +138,8 @@ function ResultCard({ p, ev, rank }) {
           </div>
         ) : null}
       </div>
+
+      <Qualifications qual={p.qual} ev={ev} scores={scores} />
 
       {ev.missing.length > 0 && ev.status !== 'unknown' && (
         <div className="missing-note">
@@ -207,7 +261,7 @@ export default function ResultsPage({ programs, scores, picks, byKey, onBack }) 
           {pickResults.length === 0 ? (
             <p className="muted-center">ยังไม่ได้เลือกอันดับ</p>
           ) : (
-            pickResults.map((r, i) => <ResultCard key={r.p._key} p={r.p} ev={r.ev} rank={i + 1} />)
+            pickResults.map((r, i) => <ResultCard key={r.p._key} p={r.p} ev={r.ev} rank={i + 1} scores={scores} />)
           )}
         </div>
       ) : (
@@ -253,7 +307,7 @@ export default function ResultsPage({ programs, scores, picks, byKey, onBack }) 
                 พบ {filtered.length.toLocaleString()} หลักสูตร
               </p>
               {filtered.slice(0, limit).map((r) => (
-                <ResultCard key={r.p._key} p={r.p} ev={r.ev} />
+                <ResultCard key={r.p._key} p={r.p} ev={r.ev} scores={scores} />
               ))}
               {limit < filtered.length && (
                 <div className="loadmore" onClick={() => setLimit((l) => l + 30)}>
