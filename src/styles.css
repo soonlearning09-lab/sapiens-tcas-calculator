@@ -615,6 +615,11 @@ button {
   color: var(--red);
   font-weight: 600;
 }
+.qual-cond {
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: var(--muted);
+}
 
 /* ── Filters ──────────────────────────────── */
 .filters {

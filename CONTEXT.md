@@ -57,6 +57,7 @@
 - ดัชนีหลักสูตร: `{apiBaseUrl}/courses.json` (~6MB, 4,921 program_id) — มี ชื่อมหาลัย/วิทยาเขต/คณะ/สาขา (TH+EN), จำนวนรับ, ค่าเทอม, อัตราจบ/ได้งาน, เงินเดือนมัธยฐาน
 - รายละเอียดต่อสาขา: `{apiBaseUrl}/ly-programs/{program_id}.json` — array (1 element ต่อ major/project) แต่ละตัวมี `scores` (น้ำหนักทางการ), `min_score`/`max_score` (จริง), `est_min_score_mean` (ทำนาย), `receive_student_number`
 - **เกณฑ์รายรอบ:** `{apiBaseUrl}/rounds/{program_id}.json` — array หลายเอนทรี (รอบ×โครงการ); `type` ขึ้นต้น `"1_"/"2_"/"3_"/"4_"` = รอบ (รอบ 3 = Admission ที่แอปคำนวณ) แต่ละตัวมี `min_total_score` (คะแนนรวมขั้นต่ำ), `min_gpax`, flags `only_formal/only_international/only_vocational/only_non_formal/only_ged` (**1=รับ, 2=ไม่รับ**), `grad_current`, `t_score`. ป้ายทางการ (จาก bundle): formal=รร.หลักสูตรแกนกลาง · international=นานาชาติ · vocational=อาชีวะ · non_formal=ตามอัธยาศัย(กศน.) · ged=GED. รอบ 3 ส่วนใหญ่มีเอนทรีเดียว (ระดับหลักสูตร ไม่มี major/project); บางหลักสูตรแยกหลายเอนทรี → join ด้วย (major_id, project_id)
+  - **`score_conditions`** (ในเอนทรีรอบ): เกณฑ์ขั้นต่ำรายวิชา — `min_<code>: ค่า` (เช่น `min_a_lv_61: 30` = คณิต1 ≥ 30) + กลุ่มผลรวม `subject_names`(รายการ `min_<code>`) + `score_minimum` (**ค่าเดียว+หลายวิชา = ผลรวม ≥ ค่า** เช่น ฟิสิกส์+เคมี+ชีวะ ≥ 90 ของแพทย์ กสพท; **list ยาวเท่าวิชา = ขั้นต่ำรายวิชา**). variant `_tscore`/`_pr`/`cefr`/`toeic` = สเกลต่าง (เทียบคะแนนดิบไม่ได้) → **ตัดทิ้ง**. ฟิลด์ `condition` = หมายเหตุ free-text (เก็บไว้แสดง)
 - **403/404 = หลักสูตรนั้นยังไม่ประกาศเกณฑ์** (ปกติ ~834 รายการ) — ไม่ใช่ error
 
 > ⚠️ `programs.json` (ไฟล์ที่ generate) มี hash ของ chunk URL ฝังในความรู้นี้ — ถ้า mytcas deploy ใหม่ ชื่อ chunk (`main.198bc51d.chunk.js`) จะเปลี่ยน แต่ **endpoint ข้อมูล (S3) ไม่เปลี่ยน** crawler จึงยังทำงานได้
@@ -80,7 +81,12 @@
   "receive_student_number": 390,
   "scores": { "tgat": 20, "tpat3": 30, "a_lv_61": 20, "a_lv_64": 20, "a_lv_65": 10 },
   // คุณสมบัติพื้นฐานรอบ 3 (จาก rounds/*.json — มีเมื่อพบเอนทรี; เก็บเฉพาะ field ที่มีค่า):
-  "qual": { "accepts": ["formal","inter","voc","nonformal","ged"], "min_total": 51, "min_gpax": 2 },
+  "qual": {
+    "accepts": ["formal","inter","voc","nonformal","ged"], "min_total": 51, "min_gpax": 2,
+    "subj_min": { "a_lv_61": 30, "a_lv_82": 30 },                 // ขั้นต่ำรายวิชา (code→ค่า)
+    "subj_groups": [{ "codes": ["a_lv_64","a_lv_65","a_lv_66"], "min": 90 }], // ผลรวมกลุ่ม ≥ min
+    "cond": "(คะแนนขั้นต่ำ...ฟิสิกส์+เคมี+ชีวะหาร3>=30%)..."      // หมายเหตุ free-text (≤300 ตัว)
+  },
   // + metadata จาก courses.json:
   "university_id", "university_type_name_th", "university_name_th"/"_en",
   "campus_name_th", "faculty_name_th"/"_en", "field_name_th", "group_field_th",
@@ -88,7 +94,8 @@
 }
 ```
 ปัจจุบัน: **6,899 records · 5,954 มี min_score · 6,836 มี qual · 74 มหาวิทยาลัย · 5 ประเภท** (ทปอ./มรภ./มทร./เอกชน/สมทบ)
-- `qual.accepts` = รหัสหลักสูตรที่รับ (`formal/inter/voc/nonformal/ged`) · `min_total`/`min_gpax` เก็บเฉพาะเมื่อ >0 (min_gpax กรอง >4 = sentinel) · แสดงใน `ResultCard` (`<Qualifications/>`) พร้อม warning "ไม่ถึง" เมื่อ GPAX/คะแนนรวมผู้ใช้ < ขั้นต่ำ
+- `qual.accepts` = รหัสหลักสูตรที่รับ (`formal/inter/voc/nonformal/ged`) · `min_total`/`min_gpax` เก็บเฉพาะเมื่อ >0 (min_gpax กรอง >4 = sentinel) · `subj_min`/`subj_groups`/`cond` จาก `score_conditions` (ดู §3) · แสดงใน `ResultCard` (`<Qualifications/>`) พร้อม warning "ไม่ถึง/ได้ N" เมื่อคะแนนผู้ใช้ < ขั้นต่ำ (เทียบกับ `withDerivedScores` เพื่อให้ tgat/tpat1 ถูก)
+- distribution: subj_min 3,067 · subj_groups 203 · cond 4,143 records · ไฟล์ raw ~11.7MB / **gzip ~0.45MB**
 
 **`history.json`** (แยกไฟล์, ~424KB) keyed ด้วย `_key` (=`program_id__major_id__project_id`):
 ```jsonc

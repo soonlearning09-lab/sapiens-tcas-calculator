@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { evaluateProgram, isReachable, STATUS_INFO } from '../lib/calculator.js';
+import { evaluateProgram, isReachable, STATUS_INFO, withDerivedScores } from '../lib/calculator.js';
 import { subjectShort } from '../lib/subjects.js';
 import { buildShareUrl } from '../lib/persist.js';
 
@@ -55,6 +55,12 @@ const CURRIC_LABEL = {
 function Qualifications({ qual, ev, scores }) {
   if (!qual) return null;
   const accepts = qual.accepts || [];
+  // ใช้คะแนนหลัง derive (tgat/tpat1 มาจากพาร์ทย่อย) เทียบเกณฑ์รายวิชา
+  const ds = withDerivedScores(scores) || {};
+  const sval = (code) => {
+    const v = ds[code];
+    return v !== undefined && v !== '' && !Number.isNaN(Number(v)) ? Number(v) : null;
+  };
   const gpax = scores?.gpax;
   const gpaxBad = qual.min_gpax != null && gpax !== undefined && gpax !== '' && Number(gpax) < qual.min_gpax;
   const totalBad = qual.min_total != null && ev.total != null && ev.total < qual.min_total;
@@ -90,6 +96,41 @@ function Qualifications({ qual, ev, scores }) {
           )}
         </div>
       )}
+
+      {qual.subj_min && (
+        <div className="qual-row">
+          <span className="qual-lbl">ขั้นต่ำรายวิชา</span>
+          {Object.entries(qual.subj_min).map(([code, min]) => {
+            const v = sval(code);
+            const bad = v != null && v < min;
+            return (
+              <span key={code} className={`qual-min ${bad ? 'bad' : ''}`}>
+                {subjectShort(code)} ≥ {min}
+                {bad ? ` (ได้ ${v})` : ''}
+              </span>
+            );
+          })}
+        </div>
+      )}
+
+      {qual.subj_groups &&
+        qual.subj_groups.map((g, i) => {
+          const vals = g.codes.map(sval);
+          const allFilled = vals.every((v) => v != null);
+          const sum = vals.reduce((s, v) => s + (v || 0), 0);
+          const bad = allFilled && sum < g.min;
+          return (
+            <div className="qual-row" key={i}>
+              <span className="qual-lbl">รวมขั้นต่ำ</span>
+              <span className={`qual-min ${bad ? 'bad' : ''}`}>
+                {g.codes.map(subjectShort).join('+')} ≥ {g.min}
+                {allFilled ? ` (ได้ ${Math.round(sum * 100) / 100})` : ''}
+              </span>
+            </div>
+          );
+        })}
+
+      {qual.cond && <div className="qual-cond">หมายเหตุ: {qual.cond}</div>}
     </div>
   );
 }

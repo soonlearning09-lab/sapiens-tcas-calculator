@@ -43,6 +43,45 @@ async function getJSON(url, tries = RETRY) {
 // normalize major/project id ("0"/""/undefined ถือว่า "0") เพื่อ join rounds ↔ ly-programs
 const nid = (v) => (v === undefined || v === null || v === '' || v === '0' ? '0' : String(v));
 
+// รหัสวิชาที่เทียบกับคะแนนดิบผู้ใช้ได้ (สเกลตรง) — ตัด variant _tscore/_pr/cefr/toeic
+const SUBJ_RE = /^(gpax|gpa2\d|tgat[123]?|tpat([1345]|1[1-3]|2[1-3])|a_lv_\d{2})$/;
+
+// แกะ score_conditions → เกณฑ์ขั้นต่ำรายวิชา + กลุ่มผลรวม
+//   min_<code>: ค่า                                   → ขั้นต่ำรายวิชา
+//   subject_names + score_minimum (ค่าเดียว, หลายวิชา) → ผลรวมกลุ่ม ≥ ค่า
+//   subject_names + score_minimum (list ยาวเท่าวิชา)   → ขั้นต่ำรายวิชา (กระจายเข้า map)
+function parseScoreConditions(sc) {
+  if (!sc || typeof sc !== 'object') return null;
+  const minMap = {};
+  const groups = [];
+  const setMin = (code, n) => {
+    if (code === 'gpax') return; // จัดการที่ min_gpax ระดับบนแล้ว
+    if (SUBJ_RE.test(code) && n > 0) minMap[code] = Math.max(minMap[code] || 0, n);
+  };
+  for (const [k, v] of Object.entries(sc)) {
+    if (k === 'subject_names' || k === 'score_minimum' || k === 'score_condition') continue;
+    if (k.startsWith('min_')) setMin(k.slice(4), Number(v));
+  }
+  if (sc.subject_names && sc.score_minimum != null) {
+    const codes = String(sc.subject_names)
+      .trim()
+      .split(/\s+/)
+      .map((t) => t.replace(/^min_/, ''))
+      .filter((c) => SUBJ_RE.test(c));
+    const mins = String(sc.score_minimum).trim().split(/\s+/).map(Number).filter((n) => !Number.isNaN(n));
+    if (codes.length && mins.length === codes.length && codes.length > 1) {
+      codes.forEach((c, i) => setMin(c, mins[i])); // list ขนาน → รายวิชา
+    } else if (codes.length && mins.length === 1 && mins[0] > 0) {
+      if (codes.length === 1) setMin(codes[0], mins[0]);
+      else groups.push({ codes, min: mins[0] }); // ค่าเดียว หลายวิชา → ผลรวม
+    }
+  }
+  const out = {};
+  if (Object.keys(minMap).length) out.subj_min = minMap;
+  if (groups.length) out.subj_groups = groups;
+  return Object.keys(out).length ? out : null;
+}
+
 // แปลง 1 เอนทรีรอบ 3 → คุณสมบัติพื้นฐานแบบกระชับ (เก็บเฉพาะที่มีค่า)
 //   flags only_*: 1 = รับ, 2 = ไม่รับ → เก็บเฉพาะรายการที่รับ (accepts)
 function toQual(e) {
@@ -59,6 +98,10 @@ function toQual(e) {
   if (mt && mt > 0) q.min_total = mt; // คะแนนรวมขั้นต่ำ
   const mg = r2(e.min_gpax);
   if (mg && mg > 0 && mg <= 4) q.min_gpax = mg; // GPAX ขั้นต่ำ (>4 = ค่า sentinel ไม่กำหนด)
+  const sc = parseScoreConditions(e.score_conditions);
+  if (sc) Object.assign(q, sc); // subj_min / subj_groups
+  const cond = String(e.condition || '').replace(/\s+/g, ' ').trim();
+  if (cond && cond !== '-' && cond.length > 3) q.cond = cond.slice(0, 300); // หมายเหตุ free-text
   return Object.keys(q).length ? q : null;
 }
 
