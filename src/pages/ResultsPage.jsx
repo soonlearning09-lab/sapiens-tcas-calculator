@@ -1,7 +1,19 @@
 import { useMemo, useState } from 'react';
 import { evaluateProgram, isReachable, STATUS_INFO, withDerivedScores } from '../lib/calculator.js';
 import { subjectShort } from '../lib/subjects.js';
+import { uniRank, UNI_RANK_SOURCE } from '../lib/uniRanking.js';
 import { buildShareUrl } from '../lib/persist.js';
+
+// ตัวเลือกการเรียงลำดับรายการคณะที่คะแนนถึง
+const SORTS = {
+  diff_desc: { label: 'ส่วนต่างมาก → น้อย', cmp: (a, b) => b.ev.diff - a.ev.diff },
+  diff_asc: { label: 'ส่วนต่างน้อย → มาก', cmp: (a, b) => a.ev.diff - b.ev.diff },
+  uni_rank: {
+    label: 'อันดับมหาวิทยาลัย (SCImago)',
+    // อันดับดีกว่าก่อน; ภายในมหาลัยเดียวกัน เรียงส่วนต่างมาก→น้อย
+    cmp: (a, b) => uniRank(a.p.university_id) - uniRank(b.p.university_id) || b.ev.diff - a.ev.diff,
+  },
+};
 
 const HIST_YEARS = [
   ['66', '66'],
@@ -235,11 +247,12 @@ export default function ResultsPage({ programs, scores, picks, byKey, onBack }) 
     return out;
   }, [programs, scores]);
 
-  // ตัวกรองสำหรับ section B
+  // ตัวกรอง + เรียงลำดับสำหรับ section B
   const [fUni, setFUni] = useState('');
   const [fType, setFType] = useState('');
   const [fStatus, setFStatus] = useState('');
   const [fText, setFText] = useState('');
+  const [sortBy, setSortBy] = useState('diff_desc');
   const [limit, setLimit] = useState(30);
 
   const uniOptions = useMemo(
@@ -253,14 +266,15 @@ export default function ResultsPage({ programs, scores, picks, byKey, onBack }) 
 
   const filtered = useMemo(() => {
     const t = fText.trim().toLowerCase();
-    return allReachable.filter((r) => {
+    const out = allReachable.filter((r) => {
       if (fUni && r.p.university_name_th !== fUni) return false;
       if (fType && r.p.program_type_name_th !== fType) return false;
       if (fStatus && r.ev.status !== fStatus) return false;
       if (t && !r.p._search.includes(t)) return false;
       return true;
     });
-  }, [allReachable, fUni, fType, fStatus, fText]);
+    return out.sort((SORTS[sortBy] || SORTS.diff_desc).cmp);
+  }, [allReachable, fUni, fType, fStatus, fText, sortBy]);
 
   return (
     <main className="container">
@@ -311,6 +325,17 @@ export default function ResultsPage({ programs, scores, picks, byKey, onBack }) 
           <p className="section-sub">หลักสูตรที่คะแนนคุณถึงเกณฑ์ต่ำสุด — กรองและเรียงตามส่วนต่างมาก→น้อย</p>
 
           <div className="filters">
+            <select
+              value={sortBy}
+              onChange={(e) => { setSortBy(e.target.value); setLimit(30); }}
+              title="เรียงลำดับ"
+            >
+              {Object.entries(SORTS).map(([key, s]) => (
+                <option key={key} value={key}>
+                  เรียง: {s.label}
+                </option>
+              ))}
+            </select>
             <select value={fUni} onChange={(e) => { setFUni(e.target.value); setLimit(30); }}>
               <option value="">ทุกมหาวิทยาลัย</option>
               {uniOptions.map((u) => (
@@ -346,6 +371,7 @@ export default function ResultsPage({ programs, scores, picks, byKey, onBack }) 
             <>
               <p className="data-note" style={{ textAlign: 'left', marginBottom: 8 }}>
                 พบ {filtered.length.toLocaleString()} หลักสูตร
+                {sortBy === 'uni_rank' && ` · เรียงตามอันดับ ${UNI_RANK_SOURCE}`}
               </p>
               {filtered.slice(0, limit).map((r) => (
                 <ResultCard key={r.p._key} p={r.p} ev={r.ev} scores={scores} />

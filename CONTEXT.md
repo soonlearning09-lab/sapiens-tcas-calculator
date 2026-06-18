@@ -129,6 +129,8 @@
 **เกณฑ์สถานะ** (เทียบ `diff = total − min_score`): `safe` (≥+3) · `pass` (≥0) · `close` (≥−2) · `fail` (<−2) · `incomplete` · `unknown`
 "คะแนนถึง/มีโอกาส" = `isReachable` = safe|pass|close
 
+**เรียงลำดับรายการ "คณะที่คะแนนถึง"** (`SORTS` ใน ResultsPage): ส่วนต่างมาก→น้อย (default) · ส่วนต่างน้อย→มาก · อันดับมหาวิทยาลัย (SCImago SIR 2024 จาก `uniRanking.js` — มหาลัยไม่ติด SIR = Infinity เรียงท้าย, tie-break ด้วยส่วนต่าง). อัปเดตปี SIR ใหม่: แก้ map ใน `uniRanking.js` (scimagoir.com ติด Cloudflare ดึงตรงไม่ได้ — ใช้ฉบับ republish เช่น thaiedunews.net)
+
 ---
 
 ## 6. แผนผังไฟล์
@@ -140,7 +142,8 @@ data/*.xlsx               ไฟล์ผลคัดเลือกทางก
 src/main.jsx              entry
 src/App.jsx               state กลาง (scores, picks, view) + persistence + <InstallPrompt/>
 src/lib/subjects.js       ตารางรหัสวิชา + toScale100 + clampScore + TPAT1_PARTS
-src/lib/calculator.js     evaluateProgram, withDerivedScores (tpat1), isReachable, STATUS_INFO
+src/lib/calculator.js     evaluateProgram, withDerivedScores (tgat/tpat1), isReachable, STATUS_INFO
+src/lib/uniRanking.js     อันดับมหาวิทยาลัย SCImago SIR 2024 (UNI_SIR_RANK keyed ด้วย university_id) → ตัวเลือกเรียง "อันดับมหาวิทยาลัย" ในหน้าผล
 src/lib/useProgramData.js โหลด+enrich programs.json + history.json (เพิ่ม _key/_name/_uni/_search/_history)
 src/lib/persist.js        localStorage + ลิงก์แชร์ (?d=base64)
 src/components/InstallPrompt.jsx  ปุ่มติดตั้ง PWA (beforeinstallprompt) + คำแนะนำ iOS
