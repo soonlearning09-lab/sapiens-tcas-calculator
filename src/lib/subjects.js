@@ -21,7 +21,9 @@ export const SUBJECTS = {
   gpa29: { name: 'GPA การศึกษาค้นคว้าด้วยตนเอง (IS)', short: 'GPA IS', group: 'พิเศษ', max: 4, scale: 25 },
 
   // ── TGAT (max 100) ───────────────────────────
-  tgat: { name: 'TGAT ความถนัดทั่วไป (รวม)', short: 'TGAT', group: 'TGAT', max: 100, scale: 1 },
+  // TGAT แยกเป็น 3 พาร์ทในฟอร์ม — ตัวรวม tgat ไม่ขึ้นฟอร์ม แต่ derive จากค่าเฉลี่ย 3 พาร์ท
+  // (ดู deriveScores) เพื่อให้หลักสูตรที่อ้างอิง tgat รวมยังคำนวณได้
+  tgat: { name: 'TGAT ความถนัดทั่วไป (รวม)', short: 'TGAT', group: 'พิเศษ', max: 100, scale: 1 },
   tgat1: { name: 'TGAT1 การสื่อสารภาษาอังกฤษ', short: 'TGAT1', group: 'TGAT', max: 100, scale: 1 },
   tgat2: { name: 'TGAT2 การคิดอย่างมีเหตุผล', short: 'TGAT2', group: 'TGAT', max: 100, scale: 1 },
   tgat3: { name: 'TGAT3 สมรรถนะการทำงาน', short: 'TGAT3', group: 'TGAT', max: 100, scale: 1 },
@@ -101,6 +103,9 @@ export function toScale100(code, rawValue) {
   const scale = meta?.scale ?? 1;
   return (Number(rawValue) || 0) * scale;
 }
+
+// 3 พาร์ทของ TGAT → ตัวรวม tgat = ค่าเฉลี่ยของพาร์ทที่กรอก (ผู้ใช้กรอกแค่ 3 พาร์ท)
+export const TGAT_PARTS = ['tgat1', 'tgat2', 'tgat3'];
 
 // 3 พาร์ทของ TPAT1 (กสพท) ถ่วงน้ำหนักเท่ากัน → ตัวรวม tpat1 = ค่าเฉลี่ยของพาร์ทที่กรอก
 export const TPAT1_PARTS = ['tpat11', 'tpat12', 'tpat13'];

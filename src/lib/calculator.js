@@ -1,5 +1,5 @@
 // ตัวคำนวณคะแนน TCAS — ใช้สัดส่วน (weights) จริงจาก mytcas เทียบกับ min_score จริง
-import { SUBJECTS, NON_SUBJECT_KEYS, toScale100, TPAT1_PARTS } from './subjects.js';
+import { SUBJECTS, NON_SUBJECT_KEYS, toScale100, TPAT1_PARTS, TGAT_PARTS } from './subjects.js';
 
 // เกณฑ์สถานะ (เทียบกับคะแนนต่ำสุดจริงของปีก่อน)
 const MARGIN_SAFE = 3;   // สูงกว่าต่ำสุด ≥ 3 → โอกาสสูง
@@ -10,14 +10,25 @@ function hasValue(v) {
   return v !== undefined && v !== null && v !== '' && !Number.isNaN(Number(v));
 }
 
-// เติมค่ารวม tpat1 ที่ derive จาก 3 พาร์ท (ผู้ใช้กรอกเป็นพาร์ท แต่บางหลักสูตรอ้างอิง tpat1 รวม)
-// tpat1 = ค่าเฉลี่ยของพาร์ทที่กรอก (กสพท ถ่วงน้ำหนัก 3 พาร์ทเท่ากัน)
+// ตัวรวมที่ derive จากพาร์ทย่อย (ผู้ใช้กรอกเป็นพาร์ท แต่บางหลักสูตรอ้างอิงตัวรวม)
+//   tgat  = ค่าเฉลี่ยของ tgat1/2/3
+//   tpat1 = ค่าเฉลี่ยของ tpat11/12/13 (กสพท ถ่วงน้ำหนัก 3 พาร์ทเท่ากัน)
+const DERIVED = [
+  { key: 'tgat', parts: TGAT_PARTS },
+  { key: 'tpat1', parts: TPAT1_PARTS },
+];
+
 export function withDerivedScores(userScores) {
-  if (!userScores || hasValue(userScores.tpat1)) return userScores;
-  const parts = TPAT1_PARTS.filter((k) => hasValue(userScores[k]));
-  if (!parts.length) return userScores;
-  const avg = parts.reduce((s, k) => s + Number(userScores[k]), 0) / parts.length;
-  return { ...userScores, tpat1: avg };
+  if (!userScores) return userScores;
+  let out = userScores;
+  for (const { key, parts } of DERIVED) {
+    if (hasValue(out[key])) continue; // ผู้ใช้/ลิงก์เก่ากรอกตัวรวมมาเองแล้ว
+    const present = parts.filter((k) => hasValue(out[k]));
+    if (!present.length) continue;
+    const avg = present.reduce((s, k) => s + Number(out[k]), 0) / present.length;
+    out = { ...out, [key]: avg };
+  }
+  return out;
 }
 
 // แตกสัดส่วนของหลักสูตรออกมาเป็นรายการ component (รองรับกฎ cal_*)
