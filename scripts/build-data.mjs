@@ -199,13 +199,32 @@ async function run() {
 
   await Promise.all(Array.from({ length: CONCURRENCY }, worker));
 
+  // dedup: courses.json ลิสต์ program เดียวกันซ้ำหลายหมวด → กันไม่ให้ได้ record ซ้ำ
+  // (key = program_id__major_id__project_id; กลุ่มสถาบันแพทยฯ ใช้ university_id เฉพาะ จึงมี key ต่าง = ไม่ถูกรวม)
+  const seen = new Set();
+  const deduped = [];
+  let dupDropped = 0;
+  for (const p of records) {
+    const k = `${p.program_id}__${p.major_id}__${p.project_id}`;
+    if (seen.has(k)) {
+      dupDropped++;
+      continue;
+    }
+    seen.add(k);
+    deduped.push(p);
+  }
+  // นับใหม่จากชุด deduped เพื่อให้ meta ตรงจริง
+  withScores = deduped.filter((p) => p.scores && Object.keys(p.scores).length > 0).length;
+  withQual = deduped.filter((p) => p.qual).length;
+
   await mkdir(OUT_DIR, { recursive: true });
-  await writeFile(join(OUT_DIR, 'programs.json'), JSON.stringify(records));
+  await writeFile(join(OUT_DIR, 'programs.json'), JSON.stringify(deduped));
   const meta = {
     generated_at: new Date().toISOString(),
     source: BASE,
     course_count: courses.length,
-    record_count: records.length,
+    record_count: deduped.length,
+    duplicates_dropped: dupDropped,
     records_with_scores: withScores,
     records_with_qual: withQual,
     programs_without_detail: noDetail,
@@ -215,7 +234,7 @@ async function run() {
 
   const secs = ((Date.now() - t0) / 1000).toFixed(1);
   console.log('\n✓ เสร็จสิ้น');
-  console.log(`  records        : ${records.length}`);
+  console.log(`  records        : ${deduped.length} (ตัดซ้ำ ${dupDropped})`);
   console.log(`  มีสัดส่วนคะแนน  : ${withScores}`);
   console.log(`  มีคุณสมบัติรอบ3 : ${withQual}`);
   console.log(`  ไม่มีรายละเอียด : ${noDetail}`);
