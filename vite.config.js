@@ -35,11 +35,13 @@ export default defineConfig({
         navigateFallback: 'index.html',
         runtimeCaching: [
           {
-            // ข้อมูลหลักสูตร: เสิร์ฟจาก cache ทันที + อัปเดต background (ใช้ offline ได้หลังเปิดครั้งแรก)
+            // ข้อมูลหลักสูตร: ลองเน็ตก่อนเสมอ (ได้ข้อมูลล่าสุดตั้งแต่โหลดรอบแรก) — ถ้าเน็ตช้า/ล่ม
+            // เกิน 4 วิ ค่อย fallback ไป cache (ยังใช้ offline ได้หลังเปิดครั้งแรก)
             urlPattern: ({ url }) => url.pathname.includes('/data/') && url.pathname.endsWith('.json'),
-            handler: 'StaleWhileRevalidate',
+            handler: 'NetworkFirst',
             options: {
               cacheName: 'tcas-data',
+              networkTimeoutSeconds: 4,
               expiration: { maxEntries: 8, maxAgeSeconds: 60 * 60 * 24 * 30 },
               cacheableResponse: { statuses: [0, 200] },
             },
