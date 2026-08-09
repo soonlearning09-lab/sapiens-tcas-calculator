@@ -1,11 +1,11 @@
 {
-  "generated_at": "2026-08-02T20:09:02.791Z",
+  "generated_at": "2026-08-09T19:31:00.961Z",
   "source": "https://my-tcas.s3.ap-southeast-1.amazonaws.com/mytcas",
-  "course_count": 3037,
+  "course_count": 3187,
   "record_count": 0,
   "duplicates_dropped": 0,
   "records_with_scores": 0,
   "records_with_qual": 0,
-  "programs_without_detail": 3037,
+  "programs_without_detail": 3187,
   "failed": 0
 }
